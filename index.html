@@ -5257,26 +5257,74 @@
         const txtGyroState = document.getElementById('txt-gyro-state');
         const btnGyroCalibrate = document.getElementById('btn-gyro-calibrate');
 
+        // --- Gyroscope view control ---
+        // Uses a full orientation quaternion (same math as three.js DeviceOrientationControls) instead of raw
+        // beta/gamma Euler angles, which flip/jump near gimbal lock (e.g. phone held upright in landscape).
+        // View direction -> yaw/pitch, low-pass filtered, applied as relative camera motion (1:1 "window" feel).
+        const gyroState = {
+            alpha: 0, beta: 0, gamma: 0,
+            hasData: false,
+            smYaw: 0, smPitch: 0,
+            prevYaw: 0, prevPitch: 0,
+            needsSync: true
+        };
+        const _gyEuler = new THREE.Euler();
+        const _gyQ = new THREE.Quaternion();
+        const _gyQ1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));
+        const _gyQ0 = new THREE.Quaternion();
+        const _gyZee = new THREE.Vector3(0, 0, 1);
+        const _gyFwd = new THREE.Vector3();
+
+        function getScreenAngle() {
+            if (screen.orientation && typeof screen.orientation.angle === 'number') return screen.orientation.angle;
+            if (typeof window.orientation === 'number') return window.orientation;
+            return 0;
+        }
+
+        function wrapPi(a) {
+            return a - Math.PI * 2 * Math.floor((a + Math.PI) / (Math.PI * 2));
+        }
+
+        function readGyroViewAngles() {
+            const D = THREE.MathUtils.degToRad;
+            _gyEuler.set(D(gyroState.beta), D(gyroState.alpha), -D(gyroState.gamma), 'YXZ');
+            _gyQ.setFromEuler(_gyEuler);
+            _gyQ.multiply(_gyQ1);
+            _gyQ.multiply(_gyQ0.setFromAxisAngle(_gyZee, -D(getScreenAngle())));
+            // Direction the screen is "looking" (back of the device)
+            _gyFwd.set(0, 0, -1).applyQuaternion(_gyQ);
+            return {
+                yaw: Math.atan2(_gyFwd.x, -_gyFwd.z),
+                pitch: Math.asin(THREE.MathUtils.clamp(_gyFwd.y, -1, 1))
+            };
+        }
+
         function handleDeviceOrientation(e) {
             if (!heliFlight.gyroEnabled) return;
             if (e.beta === null || e.gamma === null) return;
+            gyroState.alpha = e.alpha || 0;
+            gyroState.beta = e.beta;
+            gyroState.gamma = e.gamma;
+            gyroState.hasData = true;
+            heliFlight.gyroCalibrated = true;
+        }
 
-            const beta = e.beta;   // Front-to-back tilt [-180, 180]
-            const gamma = e.gamma; // Left-to-right tilt [-90, 90]
+        function resyncGyro() {
+            gyroState.needsSync = true;
+        }
 
-            if (!heliFlight.gyroCalibrated) {
-                heliFlight.gyroBaseBeta = beta;
-                heliFlight.gyroBaseGamma = gamma;
-                heliFlight.gyroCalibrated = true;
-            }
-            heliFlight.gyroCurrentBeta = beta;
-            heliFlight.gyroCurrentGamma = gamma;
+        // Re-sync when the phone is rotated between portrait / landscape so the view never jumps
+        window.addEventListener('orientationchange', resyncGyro);
+        if (screen.orientation && screen.orientation.addEventListener) {
+            screen.orientation.addEventListener('change', resyncGyro);
         }
 
         function enableGyroscopeListener() {
             heliFlight.gyroEnabled = !heliFlight.gyroEnabled;
             if (heliFlight.gyroEnabled) {
                 heliFlight.gyroCalibrated = false;
+                gyroState.hasData = false;
+                resyncGyro();
                 window.addEventListener('deviceorientation', handleDeviceOrientation, true);
                 txtGyroState.textContent = '陀螺儀視角: 開啟中';
                 btnGyroToggle.classList.replace('text-amber-300', 'text-emerald-300');
@@ -5309,8 +5357,7 @@
 
         btnGyroCalibrate.addEventListener('click', (e) => {
             e.stopPropagation();
-            heliFlight.gyroBaseBeta = heliFlight.gyroCurrentBeta;
-            heliFlight.gyroBaseGamma = heliFlight.gyroCurrentGamma;
+            resyncGyro();
         });
 
         // Raycaster for Direct 3D Subsystem Selection
@@ -5502,17 +5549,34 @@
                 controls.target.add(deltaMove);
             }
 
-            // Apply Mobile Gyroscope Camera Orbit if enabled in Hidden UI mode
-            if (isUiHidden && heliFlight.gyroEnabled && heliFlight.gyroCalibrated) {
-                const dGamma = THREE.MathUtils.degToRad(THREE.MathUtils.clamp(heliFlight.gyroCurrentGamma - heliFlight.gyroBaseGamma, -45, 45));
-                const dBeta = THREE.MathUtils.degToRad(THREE.MathUtils.clamp(heliFlight.gyroCurrentBeta - heliFlight.gyroBaseBeta, -35, 35));
+            // Apply Mobile Gyroscope Camera Orbit if enabled (smoothed, relative, gimbal-lock safe)
+            if (heliFlight.gyroEnabled && gyroState.hasData) {
+                const ang = readGyroViewAngles();
+                if (gyroState.needsSync) {
+                    gyroState.smYaw = gyroState.prevYaw = ang.yaw;
+                    gyroState.smPitch = gyroState.prevPitch = ang.pitch;
+                    gyroState.needsSync = false;
+                } else {
+                    // Low-pass filter (wrap-aware on yaw) to remove sensor jitter
+                    const k = 1.0 - Math.exp(-dt * 14.0);
+                    gyroState.smYaw += wrapPi(ang.yaw - gyroState.smYaw) * k;
+                    gyroState.smPitch += (ang.pitch - gyroState.smPitch) * k;
+                }
 
-                const offset = camera.position.clone().sub(controls.target);
-                const spherical = new THREE.Spherical().setFromVector3(offset);
-                spherical.theta -= dGamma * dt * 1.8;
-                spherical.phi = THREE.MathUtils.clamp(spherical.phi + dBeta * dt * 1.2, 0.25, Math.PI * 0.48);
-                offset.setFromSpherical(spherical);
-                camera.position.copy(controls.target).add(offset);
+                const dYaw = wrapPi(gyroState.smYaw - gyroState.prevYaw);
+                const dPitch = gyroState.smPitch - gyroState.prevPitch;
+                gyroState.prevYaw = gyroState.smYaw;
+                gyroState.prevPitch = gyroState.smPitch;
+
+                // Only move the camera while flight mode is active; otherwise keep tracking silently (no jump later)
+                if (isUiHidden && (Math.abs(dYaw) > 1e-5 || Math.abs(dPitch) > 1e-5)) {
+                    const offset = camera.position.clone().sub(controls.target);
+                    const spherical = new THREE.Spherical().setFromVector3(offset);
+                    spherical.theta -= dYaw;
+                    spherical.phi = THREE.MathUtils.clamp(spherical.phi + dPitch, 0.25, Math.PI * 0.48);
+                    offset.setFromSpherical(spherical);
+                    camera.position.copy(controls.target).add(offset);
+                }
             }
 
             // Update Flight HUD Telemetry readout

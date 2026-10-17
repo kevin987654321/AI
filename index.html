@@ -9,6 +9,7 @@
     <!-- Three.js r128 Core & OrbitControls -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
 
     <style>
         * {
@@ -1048,11 +1049,59 @@
         renderer.physicallyCorrectLights = true;
         container.appendChild(renderer.domElement);
 
-        const studioEnvTexture = createStudioEnvironment(renderer);
-        const desertEnvTexture = createDesertEnvironment(renderer);
+        let studioEnvTexture = createStudioEnvironment(renderer);
+        let desertEnvTexture = createDesertEnvironment(renderer);
         scene.environment = desertEnvTexture;
         scene.background = new THREE.Color(0xdfc4a4);
         scene.fog = new THREE.FogExp2(0xd8b894, 0.0155);
+
+        // ------------------------------------------------------------------
+        // Real HDRI image-based lighting (loaded at runtime, falls back to the
+        // procedural environments above if every URL fails / offline).
+        // ------------------------------------------------------------------
+        const HDRI_BASE_TJS = 'https://threejs.org/examples/textures/equirectangular/';
+        const HDRI_BASE_PH = 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/';
+        const HDRI_CANDIDATES = {
+            desert: [
+                HDRI_BASE_PH + 'kloppenheim_06_puresky_1k.hdr',
+                HDRI_BASE_TJS + 'spruit_sunrise_1k.hdr',
+                HDRI_BASE_TJS + 'blouberg_sunrise_2_1k.hdr'
+            ],
+            studio: [
+                HDRI_BASE_PH + 'photo_studio_loft_hall_1k.hdr',
+                HDRI_BASE_TJS + 'royal_esplanade_1k.hdr',
+                HDRI_BASE_TJS + 'venice_sunset_1k.hdr'
+            ]
+        };
+
+        function loadHdriWithFallback(urls, onLoaded) {
+            if (typeof THREE.RGBELoader !== 'function') return;
+            let idx = 0;
+            const loader = new THREE.RGBELoader();
+            const tryNext = () => {
+                if (idx >= urls.length) return; // keep procedural fallback
+                const url = urls[idx++];
+                loader.load(url, (tex) => {
+                    tex.mapping = THREE.EquirectangularReflectionMapping;
+                    const pmrem = new THREE.PMREMGenerator(renderer);
+                    pmrem.compileEquirectangularShader();
+                    const envRT = pmrem.fromEquirectangular(tex);
+                    tex.dispose();
+                    pmrem.dispose();
+                    onLoaded(envRT.texture, url);
+                }, undefined, tryNext);
+            };
+            tryNext();
+        }
+
+        loadHdriWithFallback(HDRI_CANDIDATES.desert, (envTex) => {
+            desertEnvTexture = envTex;
+            if (typeof isDesertMode === 'undefined' || isDesertMode) scene.environment = envTex;
+        });
+        loadHdriWithFallback(HDRI_CANDIDATES.studio, (envTex) => {
+            studioEnvTexture = envTex;
+            if (typeof isDesertMode !== 'undefined' && !isDesertMode) scene.environment = envTex;
+        });
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;

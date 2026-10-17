@@ -147,6 +147,50 @@
             opacity: 0 !important;
             pointer-events: none !important;
         }
+        /* Tactical Flight Controls Overlay (Active when UI is hidden) */
+        #flight-controls-overlay {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 25;
+        }
+        body.ui-hidden #flight-controls-overlay {
+            opacity: 1;
+            pointer-events: none;
+        }
+        /* Minimalist, ultra-subtle touch buttons — hidden on PC desktop (fine pointer) */
+        .touch-only-controls {
+            display: none !important;
+        }
+        @media (hover: none) and (pointer: coarse) {
+            .touch-only-controls {
+                display: flex !important;
+            }
+        }
+        body.is-touch-device .touch-only-controls {
+            display: flex !important;
+        }
+        .flight-pad-btn {
+            background: rgba(15, 23, 42, 0.16);
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: rgba(248, 250, 252, 0.55);
+            opacity: 0.32;
+            transition: transform 0.1s ease, opacity 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        .flight-pad-btn:active,
+        .flight-pad-btn.pressed {
+            background: rgba(56, 189, 248, 0.24);
+            border-color: rgba(56, 189, 248, 0.65);
+            color: rgba(255, 255, 255, 0.95);
+            opacity: 0.85;
+            transform: scale(0.93);
+        }
     </style>
 </head>
 <body class="relative w-full h-full select-none overflow-hidden">
@@ -169,8 +213,79 @@
         <svg id="icon-eye-closed" class="w-4 h-4 text-amber-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
         </svg>
-        <span id="txt-toggle-ui">隱藏介面</span>
-    </button>
+    <!-- Hidden-UI Interactive Flight Control Overlay (WASD + R/F + Subtle Mobile Touch Pads + Gyroscope View) -->
+    <div id="flight-controls-overlay" class="fixed inset-0">
+        <!-- Top-Left Minimalist Flight Telemetry & Gyroscope Control Bar -->
+        <div class="fixed top-3 left-3 md:top-4 md:left-6 flex flex-wrap items-center gap-2 pointer-events-auto">
+            <div class="bg-slate-950/45 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-xl flex items-center gap-2.5 text-xs mono">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <div>
+                    <div class="text-[9px] text-sky-400/90 font-bold tracking-wider">FLIGHT MODE // WASD 移動 · R/F 升降</div>
+                    <div id="flight-hud-telemetry" class="text-[11px] text-slate-200/90 font-semibold">SPD: 0 KT | ALT: 0 FT | GEAR: DOWN</div>
+                </div>
+            </div>
+
+            <button id="btn-gyro-toggle" class="touch-only-controls bg-slate-950/45 backdrop-blur-md border border-white/15 px-2.5 py-1.5 rounded-xl items-center gap-1.5 text-[11px] font-medium text-amber-300/90 hover:bg-sky-600/40 transition">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                </svg>
+                <span id="txt-gyro-state">陀螺儀</span>
+            </button>
+
+            <button id="btn-gyro-calibrate" class="bg-slate-950/45 backdrop-blur-md border border-white/15 px-2 py-1.5 rounded-xl text-[11px] font-medium text-slate-300/90 hidden">
+                校準
+            </button>
+
+            <button id="btn-flight-reset" class="bg-slate-950/45 backdrop-blur-md border border-white/15 px-2.5 py-1.5 rounded-xl text-[11px] font-medium text-slate-300/80 hover:text-white transition">
+                歸位
+            </button>
+        </div>
+
+        <!-- Left Side of Screen (Mobile/Touch Only): Minimalist Left / Right Control Buttons -->
+        <div class="touch-only-controls fixed bottom-5 left-4 flex items-center gap-2.5 pointer-events-auto">
+            <button id="btn-fly-left" data-key="a" aria-label="Left" class="flight-pad-btn w-11 h-11 rounded-full flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </button>
+            <button id="btn-fly-right" data-key="d" aria-label="Right" class="flight-pad-btn w-11 h-11 rounded-full flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Right Side of Screen (Mobile/Touch Only): Minimalist Altitude (R/F) & Forward/Backward (W/S) -->
+        <div class="touch-only-controls fixed bottom-5 right-4 flex items-end gap-3 pointer-events-auto">
+            <!-- Ascend / Descend Slim Pill Buttons -->
+            <div class="flex flex-col items-center gap-2">
+                <button id="btn-fly-up" data-key="r" aria-label="Ascend" class="flight-pad-btn w-9 h-9 rounded-full flex flex-col items-center justify-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 11l7-7 7 7M5 19l7-7 7 7"/>
+                    </svg>
+                </button>
+                <button id="btn-fly-down" data-key="f" aria-label="Descend" class="flight-pad-btn w-9 h-9 rounded-full flex flex-col items-center justify-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 13l-7 7-7-7M19 5l-7 7-7-7"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Forward / Backward Buttons -->
+            <div class="flex flex-col items-center gap-2">
+                <button id="btn-fly-fwd" data-key="w" aria-label="Forward" class="flight-pad-btn w-11 h-11 rounded-full flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+                    </svg>
+                </button>
+                <button id="btn-fly-bwd" data-key="s" aria-label="Backward" class="flight-pad-btn w-11 h-11 rounded-full flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Top Header & Telemetry Bar -->
     <header class="ui-collapsible fixed top-3 left-3 right-36 md:top-4 md:left-6 md:right-44 z-20 flex items-center justify-between pointer-events-none">
@@ -196,7 +311,7 @@
             <div class="h-6 w-px bg-slate-200"></div>
             <div>
                 <span class="text-slate-400 block text-[10px]">AERO SAND GRAINS</span>
-                <span id="stat-sand" class="font-bold text-amber-600">36,000 ACTIVE (BROWNOUT)</span>
+                <span id="stat-sand" class="font-bold text-amber-600">100,000 ACTIVE (BROWNOUT)</span>
             </div>
             <div class="h-6 w-px bg-slate-200"></div>
             <div>
@@ -1073,26 +1188,95 @@
         scene.add(desertGroup);
 
         /**
-         * Deterministic analytical desert elevation function so both the 3D terrain mesh
-         * and all 36,000+ individual sand grains can query exact ground height in O(1) time.
-         * Smoothly flattens near the landing gear pad (r < 3.4m) so wheels rest naturally on the ground.
+         * High-precision multi-octave analytical desert elevation function with asymmetric
+         * barchan dune ridges, wind-carved gullies, and a compacted flat helipad zone
+         * under the landing gear (r < 3.2m) so all 100,000 sand grains query exact ground height in O(1) time.
          */
         function getDesertHeight(x, z) {
             const r2 = x * x + z * z;
-            // Smooth pad mask: 0 under the landing gear, 1 further out
-            const padMask = Math.min(1.0, Math.max(0.0, (Math.sqrt(r2) - 2.6) / 4.2));
+            const r = Math.sqrt(r2);
+            const padMask = Math.min(1.0, Math.max(0.0, (r - 2.8) / 4.8));
             const smoothMask = padMask * padMask * (3.0 - 2.0 * padMask);
 
-            // Macro dunes + medium wind-sculpted barchan ridges + micro ripples
-            const macroDune = Math.sin(x * 0.085 + z * 0.065) * 0.85
-                            + Math.cos(x * 0.045 - z * 0.11 + 1.2) * 0.65
-                            + Math.sin(x * 0.16 - z * 0.14) * 0.22;
-            const microRipple = Math.sin(x * 1.8 + z * 1.4) * 0.018;
+            // Primary wind-aligned barchan dune waves with sharp asymmetrical crests
+            const u = x * 0.065 + z * 0.055;
+            const v = x * 0.045 - z * 0.075;
+            const duneWave1 = Math.sin(u + Math.sin(v * 1.4) * 0.65);
+            const sharpCrest1 = (duneWave1 + 0.35 * duneWave1 * duneWave1) * 0.95;
 
-            // Slight natural depression right under the rotor wash zone
-            const scourBowl = -0.035 * Math.exp(-r2 / 22.0);
-            return (macroDune + microRipple) * smoothMask + scourBowl * (1.0 - smoothMask * 0.5);
+            // Secondary cross-swept dune ridges
+            const duneWave2 = Math.cos(v * 1.35 + Math.cos(u * 0.9) * 0.55);
+            const sharpCrest2 = (duneWave2 + 0.28 * duneWave2 * duneWave2) * 0.68;
+
+            // Medium wind-drifted hummocks & eolian sand sheets
+            const medUndulation = Math.sin(x * 0.19 - z * 0.16 + 0.8) * 0.22
+                                + Math.cos(x * 0.34 + z * 0.29) * 0.09;
+
+            // High-frequency wind-blown ripple relief
+            const ripplePhase = x * 2.4 + z * 1.9 + Math.sin(x * 0.7 - z * 0.6) * 1.2;
+            const microRipple = Math.pow(0.5 + 0.5 * Math.sin(ripplePhase), 1.6) * 0.024;
+
+            // Subtle rotor downwash scour depression right under the aircraft
+            const scourBowl = -0.028 * Math.exp(-r2 / 24.0);
+            return (sharpCrest1 + sharpCrest2 + medUndulation + microRipple) * smoothMask + scourBowl * (1.0 - smoothMask * 0.5);
         }
+
+        // Realistic Rayleigh/Mie Atmospheric Desert Sky Dome & Distant Horizon Mountain Silhouettes
+        const desertSkyGeo = new THREE.SphereGeometry(142, 48, 28);
+        const desertSkyMat = new THREE.ShaderMaterial({
+            side: THREE.BackSide,
+            depthWrite: false,
+            uniforms: {
+                uSunDir: { value: new THREE.Vector3(0.48, 0.58, 0.44).normalize() }
+            },
+            vertexShader: `
+                varying vec3 vWorldPos;
+                void main() {
+                    vec4 wp = modelMatrix * vec4(position, 1.0);
+                    vWorldPos = wp.xyz;
+                    gl_Position = projectionMatrix * viewMatrix * wp;
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 uSunDir;
+                varying vec3 vWorldPos;
+                void main() {
+                    vec3 dir = normalize(vWorldPos);
+                    float elev = clamp(dir.y, -0.15, 1.0);
+
+                    // Desert sky gradient: warm cobalt-slate zenith -> dusty ochre-amber horizon
+                    vec3 zenithCol = vec3(0.54, 0.67, 0.79);
+                    vec3 midSkyCol = vec3(0.85, 0.77, 0.66);
+                    vec3 horizonHaze = vec3(0.91, 0.79, 0.63);
+                    vec3 groundCol = vec3(0.74, 0.58, 0.40);
+
+                    vec3 col = mix(horizonHaze, midSkyCol, smoothstep(0.0, 0.28, max(0.0, elev)));
+                    col = mix(col, zenithCol, smoothstep(0.22, 0.85, max(0.0, elev)));
+
+                    // Distant desert mountain & mega-dune silhouettes near horizon
+                    float az = atan(dir.z, dir.x);
+                    float mtnHeight = 0.022 * sin(az * 5.0 + 1.2)
+                                    + 0.015 * cos(az * 11.0 - 0.7)
+                                    + 0.008 * sin(az * 23.0)
+                                    + 0.025;
+                    if (elev < mtnHeight && elev > -0.05) {
+                        float ridgeFade = smoothstep(mtnHeight, mtnHeight - 0.006, elev);
+                        vec3 mtnCol = mix(vec3(0.76, 0.62, 0.46), horizonHaze, 0.55);
+                        col = mix(col, mtnCol, ridgeFade * 0.65);
+                    }
+                    col = mix(groundCol, col, smoothstep(-0.06, 0.01, elev));
+
+                    // Blazing desert sun disc & Mie dust forward-scattering corona
+                    float sunDot = max(0.0, dot(dir, uSunDir));
+                    col += vec3(1.0, 0.88, 0.68) * pow(sunDot, 12.0) * 0.42;
+                    col += vec3(1.0, 0.97, 0.90) * smoothstep(0.9975, 0.9996, sunDot) * 1.65;
+
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `
+        });
+        const desertSkyMesh = new THREE.Mesh(desertSkyGeo, desertSkyMat);
+        desertGroup.add(desertSkyMesh);
 
         function createDesertSandTextures() {
             const size = 1024;
@@ -1106,17 +1290,9 @@
             const bCtx = bumpCanvas.getContext('2d');
             const rCtx = roughCanvas.getContext('2d');
 
-            aCtx.fillStyle = '#c89d6c';
-            aCtx.fillRect(0, 0, size, size);
-            bCtx.fillStyle = '#808080';
-            bCtx.fillRect(0, 0, size, size);
-            rCtx.fillStyle = '#d8d8d8';
-            rCtx.fillRect(0, 0, size, size);
-
-            // Wind-blown sand ripple waves across texture
-            const imgDataA = aCtx.getImageData(0, 0, size, size);
-            const imgDataB = bCtx.getImageData(0, 0, size, size);
-            const imgDataR = rCtx.getImageData(0, 0, size, size);
+            const imgDataA = aCtx.createImageData(size, size);
+            const imgDataB = bCtx.createImageData(size, size);
+            const imgDataR = rCtx.createImageData(size, size);
             const dA = imgDataA.data;
             const dB = imgDataB.data;
             const dR = imgDataR.data;
@@ -1127,24 +1303,41 @@
                     const nx = (x / size) * Math.PI * 2;
                     const idx = (y * size + x) * 4;
 
-                    // Multi-scale eolian sand ripples (periodic on [0, 2pi])
-                    const warp = Math.sin(nx * 3.0 + ny * 2.0) * 0.55 + Math.cos(nx * 7.0 - ny * 5.0) * 0.25;
-                    const ripple1 = Math.sin(nx * 28.0 + ny * 18.0 + warp * 2.4);
-                    const ripple2 = Math.sin(nx * 56.0 + ny * 36.0 + warp * 3.2) * 0.35;
-                    const fineGrain = ((Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1 + 1) % 1;
+                    // Domain-warped asymmetric wind-blown sand ripples (sawtooth-like crest profile)
+                    const warp1 = Math.sin(nx * 2.0 + ny * 2.0) * 0.65
+                                + Math.cos(nx * 5.0 - ny * 4.0) * 0.28
+                                + Math.sin(nx * 9.0 + ny * 7.0) * 0.12;
+                    const phase1 = nx * 24.0 + ny * 16.0 + warp1 * 2.8;
+                    // Asymmetric ripple wave: gentle windward slope, sharp crest, steep leeward drop
+                    const s1 = Math.sin(phase1);
+                    const asymRipple1 = s1 + 0.35 * Math.sin(phase1 * 2.0 - 0.6);
 
-                    const hVal = ripple1 * 0.65 + ripple2 + (fineGrain - 0.5) * 0.45;
+                    // Secondary finer cross-ripples in the troughs
+                    const phase2 = nx * 52.0 + ny * 34.0 - warp1 * 2.2;
+                    const asymRipple2 = Math.sin(phase2) * 0.28;
 
-                    dA[idx]     = Math.min(255, Math.max(0, 202 + hVal * 22));
-                    dA[idx + 1] = Math.min(255, Math.max(0, 158 + hVal * 18));
-                    dA[idx + 2] = Math.min(255, Math.max(0, 108 + hVal * 14));
+                    // Multi-mineral micro-sand grain noise (quartz, feldspar, iron-oxide grains)
+                    const h1 = ((Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1 + 1) % 1;
+                    const h2 = ((Math.sin(x * 93.989 + y * 67.345) * 24634.6345) % 1 + 1) % 1;
+                    const microGrain = (h1 - 0.5) * 0.42 + (h2 - 0.5) * 0.25;
+
+                    // Quartz specular micro-sparkle on sunlit ripple crests
+                    const sparkle = (h1 > 0.965 && s1 > 0.2) ? 28.0 : 0.0;
+
+                    const heightVal = asymRipple1 * 0.58 + asymRipple2 + microGrain * 0.35;
+
+                    // Rich natural desert sand coloration (golden buff crests, deeper ochre-sienna troughs)
+                    dA[idx]     = Math.min(255, Math.max(0, 212 + heightVal * 26 + sparkle));
+                    dA[idx + 1] = Math.min(255, Math.max(0, 171 + heightVal * 22 + sparkle * 0.9));
+                    dA[idx + 2] = Math.min(255, Math.max(0, 122 + heightVal * 17 + sparkle * 0.7));
                     dA[idx + 3] = 255;
 
-                    const bVal = Math.min(255, Math.max(0, 128 + hVal * 75));
+                    const bVal = Math.min(255, Math.max(0, 128 + heightVal * 88));
                     dB[idx] = dB[idx + 1] = dB[idx + 2] = bVal;
                     dB[idx + 3] = 255;
 
-                    const rVal = Math.min(255, Math.max(0, 215 - ripple1 * 18 + (fineGrain - 0.5) * 20));
+                    // Crests are slightly smoother/glintier due to sorted fine quartz; troughs are rougher
+                    const rVal = Math.min(255, Math.max(0, 218 - asymRipple1 * 24 - sparkle * 3.2 + (h2 - 0.5) * 22));
                     dR[idx] = dR[idx + 1] = dR[idx + 2] = rVal;
                     dR[idx + 3] = 255;
                 }
@@ -1159,7 +1352,7 @@
             const roughMap = new THREE.CanvasTexture(roughCanvas);
             [map, bumpMap, roughMap].forEach(t => {
                 t.wrapS = t.wrapT = THREE.RepeatWrapping;
-                t.repeat.set(28, 28);
+                t.repeat.set(36, 36);
                 t.anisotropy = 8;
             });
             return { map, bumpMap, roughMap };
@@ -1169,15 +1362,15 @@
         const desertTerrainMat = new THREE.MeshStandardMaterial({
             map: desertTex.map,
             bumpMap: desertTex.bumpMap,
-            bumpScale: 0.045,
+            bumpScale: 0.055,
             roughnessMap: desertTex.roughMap,
-            roughness: 0.88,
-            metalness: 0.04,
-            envMapIntensity: 0.65
+            roughness: 0.86,
+            metalness: 0.03,
+            envMapIntensity: 0.72
         });
 
-        const terrainSize = 180;
-        const terrainSegs = 160;
+        const terrainSize = 220;
+        const terrainSegs = 240;
         const desertTerrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, terrainSegs, terrainSegs);
         desertTerrainGeo.rotateX(-Math.PI / 2);
 
@@ -1205,77 +1398,115 @@
         const scCtx = scourCanvas.getContext('2d');
         const scGrad = scCtx.createRadialGradient(256, 256, 25, 256, 256, 250);
         scGrad.addColorStop(0.0, 'rgba(168, 124, 76, 0.0)');
-        scGrad.addColorStop(0.28, 'rgba(218, 178, 128, 0.35)');
-        scGrad.addColorStop(0.58, 'rgba(238, 202, 152, 0.55)');
-        scGrad.addColorStop(0.82, 'rgba(210, 168, 114, 0.25)');
+        scGrad.addColorStop(0.28, 'rgba(218, 178, 128, 0.28)');
+        scGrad.addColorStop(0.58, 'rgba(238, 202, 152, 0.46)');
+        scGrad.addColorStop(0.82, 'rgba(210, 168, 114, 0.20)');
         scGrad.addColorStop(1.0, 'rgba(194, 148, 94, 0.0)');
         scCtx.fillStyle = scGrad;
         scCtx.fillRect(0, 0, 512, 512);
 
-        // Radial wind-streak striations in the scouring ring
-        scCtx.strokeStyle = 'rgba(245, 220, 180, 0.28)';
-        scCtx.lineWidth = 1.5;
-        for (let i = 0; i < 140; i++) {
-            const a = (i / 140) * Math.PI * 2;
+        scCtx.strokeStyle = 'rgba(245, 220, 180, 0.24)';
+        scCtx.lineWidth = 1.2;
+        for (let i = 0; i < 180; i++) {
+            const a = (i / 180) * Math.PI * 2;
             scCtx.beginPath();
-            scCtx.moveTo(256 + Math.cos(a) * 45, 256 + Math.sin(a) * 45);
-            scCtx.lineTo(256 + Math.cos(a + 0.08) * 245, 256 + Math.sin(a + 0.08) * 245);
+            scCtx.moveTo(256 + Math.cos(a) * 42, 256 + Math.sin(a) * 42);
+            scCtx.lineTo(256 + Math.cos(a + 0.06) * 248, 256 + Math.sin(a + 0.06) * 248);
             scCtx.stroke();
         }
 
         const scourRingMat = new THREE.MeshBasicMaterial({
             map: new THREE.CanvasTexture(scourCanvas),
             transparent: true,
-            opacity: 0.75,
+            opacity: 0.65,
             depthWrite: false
         });
-        const scourRingMesh = new THREE.Mesh(new THREE.PlaneGeometry(16.5, 16.5), scourRingMat);
+        const scourRingMesh = new THREE.Mesh(new THREE.PlaneGeometry(17.5, 17.5), scourRingMat);
         scourRingMesh.rotation.x = -Math.PI / 2;
         scourRingMesh.position.set(0, 0.02, -0.02);
         desertGroup.add(scourRingMesh);
 
-        // Procedural Wind-Eroded Desert Rocks, Outcrops & Pebbles
+        // Procedural Stratified Sandstone Texture (Sedimentary Bedding Planes & Desert Varnish)
+        function createSandstoneTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#8b6848';
+            ctx.fillRect(0, 0, 512, 512);
+
+            for (let y = 0; y < 512; y++) {
+                const layer = Math.sin(y * 0.14) * 14 + Math.cos(y * 0.42) * 8 + Math.sin(y * 1.1) * 4;
+                const r = Math.min(255, Math.max(0, 142 + layer));
+                const g = Math.min(255, Math.max(0, 106 + layer * 0.8));
+                const b = Math.min(255, Math.max(0, 74 + layer * 0.6));
+                ctx.fillStyle = `rgb(${r},${g},${b})`;
+                ctx.fillRect(0, y, 512, 1);
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        const sandstoneTex = createSandstoneTexture();
         const desertRockMat = new THREE.MeshStandardMaterial({
-            color: 0x7c5e42,
-            bumpMap: desertTex.bumpMap,
-            bumpScale: 0.03,
-            roughness: 0.92,
-            metalness: 0.05
+            map: sandstoneTex,
+            bumpMap: sandstoneTex,
+            bumpScale: 0.04,
+            roughness: 0.90,
+            metalness: 0.04
         });
 
+        // Wind-Sculpted Stratified Sandstone Yardangs, Outcrops, Sand Aprons & Desert Pebbles
         const rockColliderList = [];
-        for (let r = 0; r < 65; r++) {
-            // Place rocks outside the immediate landing gear pad (radius 4.8m to 45m)
-            const angle = (r * 2.39996) + (r % 3) * 0.25;
-            const dist = 4.8 + (r / 65) * 38.0 + Math.sin(r * 3.1) * 1.8;
+        for (let r = 0; r < 52; r++) {
+            const angle = (r * 2.39996) + (r % 4) * 0.18;
+            const dist = 5.4 + (r / 52) * 44.0 + Math.sin(r * 2.7) * 2.2;
             const rx = Math.cos(angle) * dist;
             const rz = Math.sin(angle) * dist;
             const ry = getDesertHeight(rx, rz);
 
-            const scaleX = 0.18 + ((r * 17) % 10) * 0.085;
-            const scaleY = scaleX * (0.38 + ((r * 7) % 5) * 0.1);
-            const scaleZ = scaleX * (0.75 + ((r * 13) % 6) * 0.12);
+            const scaleX = 0.28 + ((r * 19) % 12) * 0.11;
+            const scaleY = scaleX * (0.28 + ((r * 7) % 5) * 0.085);
+            const scaleZ = scaleX * (0.65 + ((r * 13) % 6) * 0.14);
 
-            const rockGeo = new THREE.DodecahedronGeometry(1.0, 1);
+            // High-resolution stratified sandstone geometry with flat wind-sheared terraces
+            const rockGeo = new THREE.IcosahedronGeometry(1.0, 2);
             const rPos = rockGeo.attributes.position;
             for (let vi = 0; vi < rPos.count; vi++) {
-                const vx = rPos.getX(vi);
-                const vy = rPos.getY(vi);
-                const vz = rPos.getZ(vi);
-                const n = 1.0 + 0.18 * Math.sin(vx * 4.0 + r) * Math.cos(vz * 4.0 - r);
-                rPos.setXYZ(vi, vx * scaleX * n, vy * scaleY * n, vz * scaleZ * n);
+                let vx = rPos.getX(vi);
+                let vy = rPos.getY(vi);
+                let vz = rPos.getZ(vi);
+
+                // Flatten bottom and create stepped horizontal sedimentary strata terraces
+                if (vy < -0.35) vy = -0.35;
+                const strata = Math.sin(vy * 9.5 + r) * 0.085;
+                const facet = 1.0 + 0.16 * Math.sin(vx * 3.8 + r) * Math.cos(vz * 3.4 - r) + strata;
+                // Terrace stepping on upper faces
+                const terracedY = vy - Math.sin(vy * 6.0) * 0.06;
+
+                rPos.setXYZ(vi, vx * scaleX * facet, terracedY * scaleY, vz * scaleZ * facet);
             }
             rockGeo.computeVertexNormals();
 
             const rockMesh = new THREE.Mesh(rockGeo, desertRockMat);
-            rockMesh.position.set(rx, ry + scaleY * 0.35, rz);
-            rockMesh.rotation.set(0, angle * 1.7, 0);
+            rockMesh.position.set(rx, ry + scaleY * 0.22, rz);
+            rockMesh.rotation.set((r % 3 - 1) * 0.06, angle * 1.3, ((r + 1) % 3 - 1) * 0.05);
             rockMesh.castShadow = true;
             rockMesh.receiveShadow = true;
             desertGroup.add(rockMesh);
 
-            if (scaleX > 0.45) {
-                rockColliderList.push({ x: rx, y: ry + scaleY * 0.4, z: rz, r: scaleX * 1.1 });
+            // Wind-drifted sand apron mound around the base of larger sandstone outcrops
+            if (scaleX > 0.55) {
+                const apronGeo = new THREE.ConeGeometry(scaleX * 1.45, scaleY * 0.48, 18);
+                const apronMesh = new THREE.Mesh(apronGeo, desertTerrainMat);
+                apronMesh.scale.set(1.0, 1.0, scaleZ / scaleX * 1.25);
+                apronMesh.position.set(rx, ry + scaleY * 0.12, rz);
+                apronMesh.rotation.y = angle * 1.3;
+                apronMesh.receiveShadow = true;
+                desertGroup.add(apronMesh);
+
+                rockColliderList.push({ x: rx, y: ry + scaleY * 0.35, z: rz, r: scaleX * 1.15 });
             }
         }
 
@@ -1326,6 +1557,26 @@
                 color: 0x64748b,
                 roughness: 0.24,
                 metalness: 0.86
+            }),
+            rotorBladeCarbon: new THREE.MeshPhysicalMaterial({
+                color: 0x22272e,
+                map: carbonMaps.map,
+                bumpMap: carbonMaps.bumpMap,
+                bumpScale: 0.009,
+                roughness: 0.34,
+                metalness: 0.28,
+                clearcoat: 0.42,
+                clearcoatRoughness: 0.24,
+                transparent: true,
+                opacity: 1.0,
+                side: THREE.DoubleSide
+            }),
+            rotorBladeEdge: new THREE.MeshStandardMaterial({
+                color: 0x64748b,
+                roughness: 0.24,
+                metalness: 0.86,
+                transparent: true,
+                opacity: 1.0
             }),
             anodizedGunmetal: new THREE.MeshStandardMaterial({
                 color: 0x262d35,
@@ -3061,18 +3312,195 @@
             bladeGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
             bladeGeo.computeVertexNormals();
 
-            const bladeMesh = new THREE.Mesh(bladeGeo, MAT.carbonFiber);
+            const bladeMesh = new THREE.Mesh(bladeGeo, MAT.rotorBladeCarbon);
             featherGroup.add(bladeMesh);
 
             const stripLen = (length - 0.45) * 0.82;
-            const leStrip = new THREE.Mesh(new THREE.BoxGeometry(stripLen, 0.022, 0.045), MAT.bladeLeadingEdge);
+            const leStrip = new THREE.Mesh(new THREE.BoxGeometry(stripLen, 0.022, 0.045), MAT.rotorBladeEdge);
             leStrip.position.set(stripLen * 0.5, 0.015, direction * 0.155);
             featherGroup.add(leStrip);
 
-            return { bladeRoot, featherGroup };
+            // Multi-slice swept motion-blur ghost trail blades (visible when spinning at high RPM)
+            const ghostSlices = [];
+            [1, 2, 3].forEach(sliceIdx => {
+                const ghostMat = new THREE.MeshBasicMaterial({
+                    color: sliceIdx === 1 ? 0x333b44 : 0x1e242b,
+                    transparent: true,
+                    opacity: 0.0,
+                    depthWrite: false,
+                    side: THREE.DoubleSide
+                });
+                const ghostMesh = new THREE.Mesh(bladeGeo, ghostMat);
+                // Trail behind the direction of rotation
+                ghostMesh.rotation.y = -direction * sliceIdx * 0.068;
+                ghostMesh.scale.z = 1.0 + sliceIdx * 0.32;
+                featherGroup.add(ghostMesh);
+                ghostSlices.push({ mesh: ghostMesh, mat: ghostMat, sliceIdx });
+            });
+
+            return { bladeRoot, featherGroup, ghostSlices };
+        }
+
+        /**
+         * Creates a physically-based anisotropic motion-blur rotor disc shader mesh
+         * that renders 4 swept-tip blade shutter streaks, leading-edge titanium glint,
+         * and blade-tip vortex condensation rings when rotor RPM is high.
+         */
+        function createCoaxialRotorBlurDisc(radius = 5.45, direction = 1.0) {
+            const radialSegs = 36;
+            const angularSegs = 96;
+            const innerR = 0.48;
+            const positions = [];
+            const uvs = [];
+
+            for (let ir = 0; ir < radialSegs; ir++) {
+                const t0 = ir / radialSegs;
+                const t1 = (ir + 1) / radialSegs;
+                const r0 = innerR + t0 * (radius - innerR);
+                const r1 = innerR + t1 * (radius - innerR);
+
+                // Match the exact coning droop & anhedral tip profile of the 3D blades
+                const getDroop = (t) => {
+                    let dy = Math.sin(t * Math.PI * 0.65) * 0.04;
+                    if (t > 0.82) {
+                        dy -= Math.pow((t - 0.82) / 0.18, 1.8) * 0.11;
+                    }
+                    return dy;
+                };
+                const y0 = getDroop(t0);
+                const y1 = getDroop(t1);
+
+                for (let ia = 0; ia < angularSegs; ia++) {
+                    const a0 = (ia / angularSegs) * Math.PI * 2;
+                    const a1 = ((ia + 1) / angularSegs) * Math.PI * 2;
+
+                    const p00 = [Math.cos(a0) * r0, y0, Math.sin(a0) * r0];
+                    const p10 = [Math.cos(a1) * r0, y0, Math.sin(a1) * r0];
+                    const p01 = [Math.cos(a0) * r1, y1, Math.sin(a0) * r1];
+                    const p11 = [Math.cos(a1) * r1, y1, Math.sin(a1) * r1];
+
+                    positions.push(...p00, ...p10, ...p11);
+                    uvs.push(t0, a0 / (Math.PI * 2), t0, a1 / (Math.PI * 2), t1, a1 / (Math.PI * 2));
+
+                    positions.push(...p00, ...p11, ...p01);
+                    uvs.push(t0, a0 / (Math.PI * 2), t1, a1 / (Math.PI * 2), t1, a0 / (Math.PI * 2));
+                }
+            }
+
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+
+            const mat = new THREE.ShaderMaterial({
+                transparent: true,
+                depthWrite: false,
+                side: THREE.DoubleSide,
+                uniforms: {
+                    uBlurIntensity: { value: 0.0 },
+                    uDirection: { value: direction }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    varying vec3 vLocalPos;
+                    void main() {
+                        vUv = uv;
+                        vLocalPos = position;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform float uBlurIntensity;
+                    uniform float uDirection;
+                    varying vec2 vUv;
+                    varying vec3 vLocalPos;
+
+                    void main() {
+                        if (uBlurIntensity <= 0.01) discard;
+
+                        float rNorm = vUv.x;
+                        float angle = atan(vLocalPos.z, vLocalPos.x);
+
+                        // Apply backward tip sweep curve matching the 3D swept-tip blades (t > 0.82)
+                        float tipSweep = 0.0;
+                        if (rNorm > 0.78) {
+                            float tipT = (rNorm - 0.78) / 0.22;
+                            tipSweep = uDirection * pow(tipT, 1.6) * 0.14;
+                        }
+
+                        // 4 blades spaced by PI/2 (offset by PI/4 on lower rotor handled by parent group rotation)
+                        float bladePhase = fract((angle + tipSweep) * 2.0 / 3.14159265);
+                        // Flip trail direction according to rotation sense
+                        float trailCoord = uDirection > 0.0 ? bladePhase : (1.0 - bladePhase);
+
+                        // Shutter-angle azimuthal streak envelope (sharp leading edge, smooth exponential wake trail)
+                        float leadingEdgeFlash = exp(-pow(trailCoord / 0.055, 2.0));
+                        float shutterWake = smoothstep(0.0, 0.04, trailCoord) * exp(-trailCoord * (2.6 - uBlurIntensity * 1.1));
+
+                        // Radial taper at root & outer tip + high-speed tip vortex condensation ribbon
+                        float radialMask = smoothstep(0.0, 0.08, rNorm) * (1.0 - smoothstep(0.95, 1.0, rNorm));
+                        float tipRing = exp(-pow((rNorm - 0.965) / 0.022, 2.0)) * 0.55;
+                        float midRing = 0.08 * sin(rNorm * 65.0);
+
+                        // Color composition: dark carbon wake + metallic titanium leading-edge glint + vapour tip ring
+                        vec3 wakeColor = vec3(0.13, 0.16, 0.19) + vec3(0.05) * midRing;
+                        vec3 glintColor = vec3(0.68, 0.76, 0.84);
+                        vec3 tipColor = vec3(0.85, 0.88, 0.92);
+
+                        vec3 finalColor = mix(wakeColor, glintColor, leadingEdgeFlash * 0.75);
+                        finalColor = mix(finalColor, tipColor, tipRing);
+
+                        float alpha = (shutterWake * 0.46 + leadingEdgeFlash * 0.34 + tipRing * 0.32) * radialMask * uBlurIntensity;
+                        gl_FragColor = vec4(finalColor, clamp(alpha, 0.0, 0.72));
+                    }
+                `
+            });
+
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.frustumCulled = false;
+            return { mesh, mat };
+        }
+
+        /**
+         * Creates an 8-blade high-RPM motion blur disc for the enclosed tail thruster fan.
+         */
+        function createTailFanBlurDisc(outerR = 0.76, innerR = 0.21) {
+            const geo = new THREE.RingGeometry(innerR, outerR, 48, 4);
+            geo.rotateY(Math.PI / 2);
+            const mat = new THREE.ShaderMaterial({
+                transparent: true,
+                depthWrite: false,
+                side: THREE.DoubleSide,
+                uniforms: {
+                    uBlurIntensity: { value: 0.0 }
+                },
+                vertexShader: `
+                    varying vec3 vPos;
+                    void main() {
+                        vPos = position;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform float uBlurIntensity;
+                    varying vec3 vPos;
+                    void main() {
+                        if (uBlurIntensity <= 0.01) discard;
+                        float r = length(vPos.yz);
+                        float rNorm = clamp((r - 0.21) / 0.55, 0.0, 1.0);
+                        float ang = atan(vPos.z, vPos.y);
+                        float phase = fract(ang * 8.0 / 6.2831853);
+                        float streak = exp(-phase * 2.1) * 0.45 + 0.22;
+                        float rim = smoothstep(0.0, 0.1, rNorm) * (1.0 - smoothstep(0.9, 1.0, rNorm));
+                        vec3 col = mix(vec3(0.14, 0.17, 0.21), vec3(0.55, 0.64, 0.72), exp(-phase * 10.0));
+                        gl_FragColor = vec4(col, streak * rim * uBlurIntensity * 0.68);
+                    }
+                `
+            });
+            return { mesh: new THREE.Mesh(geo, mat), mat };
         }
 
         const allBladeFeatherGroups = [];
+        const allRotorGhostSlices = [];
         const swashplatesToPitch = [];
 
         const lowerMastTube = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.21, 0.85, 24), MAT.anodizedGunmetal);
@@ -3134,9 +3562,10 @@
         for (let i = 0; i < 4; i++) {
             const armGroup = new THREE.Group();
             armGroup.rotation.y = (i / 4) * Math.PI * 2 + Math.PI / 4;
-            const { bladeRoot, featherGroup } = createAirfoilRotorBlade(5.45, 1);
+            const { bladeRoot, featherGroup, ghostSlices } = createAirfoilRotorBlade(5.45, 1);
             featherGroup.rotation.x = 0.10;
             allBladeFeatherGroups.push({ featherGroup, dir: 1 });
+            allRotorGhostSlices.push(...ghostSlices);
             armGroup.add(bladeRoot);
 
             const pitchLink = createHeimJointRod(0.38, 0.014);
@@ -3145,6 +3574,10 @@
 
             lowerRotorSpinGroup.add(armGroup);
         }
+
+        const lowerBlurDisc = createCoaxialRotorBlurDisc(5.45, 1.0);
+        lowerBlurDisc.mesh.rotation.y = Math.PI / 4;
+        lowerRotorSpinGroup.add(lowerBlurDisc.mesh);
 
         const upperMastShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.15, 0.96, 24), MAT.anodizedGunmetal);
         upperMastShaft.position.set(0, 4.22, rotorCenterZ);
@@ -3203,9 +3636,10 @@
         for (let i = 0; i < 4; i++) {
             const armGroup = new THREE.Group();
             armGroup.rotation.y = (i / 4) * Math.PI * 2;
-            const { bladeRoot, featherGroup } = createAirfoilRotorBlade(5.45, -1);
+            const { bladeRoot, featherGroup, ghostSlices } = createAirfoilRotorBlade(5.45, -1);
             featherGroup.rotation.x = -0.10;
             allBladeFeatherGroups.push({ featherGroup, dir: -1 });
+            allRotorGhostSlices.push(...ghostSlices);
             armGroup.add(bladeRoot);
 
             const pitchLink = createHeimJointRod(0.38, 0.014);
@@ -3214,6 +3648,9 @@
 
             upperRotorSpinGroup.add(armGroup);
         }
+
+        const upperBlurDisc = createCoaxialRotorBlurDisc(5.45, -1.0);
+        upperRotorSpinGroup.add(upperBlurDisc.mesh);
 
         // ----------------------------------------------------------------------------
         // SUBSYSTEM 15: TAIL BOOM, ENCLOSED THRUSTER & COMPOSITE TWIN FINS
@@ -3309,6 +3746,9 @@
             bladeHolder.add(fanBlade);
             tailFanSpinGroup.add(bladeHolder);
         }
+
+        const tailBlurDisc = createTailFanBlurDisc(ductRadius * 0.88, 0.21);
+        tailFanSpinGroup.add(tailBlurDisc.mesh);
 
         const hStab = new THREE.Mesh(new THREE.BoxGeometry(2.56, 0.06, 0.52), MAT.stealthHull);
         hStab.position.set(0, ductCenterY, ductCenterZ - 0.18);
@@ -3490,96 +3930,132 @@
         noseGearGroup.position.set(0, 0, 2.85);
         sysLandingGear.add(noseGearGroup);
 
+        // Nose gear retraction pivot at upper strut trunnion (y = 0.90, z = 0.04)
+        const noseGearRetractPivot = new THREE.Group();
+        noseGearRetractPivot.position.set(0, 0.90, 0.04);
+        noseGearGroup.add(noseGearRetractPivot);
+
+        const noseGearStrutAssembly = new THREE.Group();
+        noseGearStrutAssembly.position.set(0, -0.90, -0.04);
+        noseGearRetractPivot.add(noseGearStrutAssembly);
+
         const ngUpperStrut = new THREE.Mesh(new THREE.CylinderGeometry(0.068, 0.068, 0.56, 20), MAT.anodizedGunmetal);
         ngUpperStrut.position.set(0, 0.68, 0.04);
         ngUpperStrut.rotation.x = -0.12;
-        noseGearGroup.add(ngUpperStrut);
+        noseGearStrutAssembly.add(ngUpperStrut);
 
         const ngSteerCollar = new THREE.Mesh(new THREE.CylinderGeometry(0.088, 0.088, 0.12, 20), MAT.machinedSteel);
         ngSteerCollar.position.set(0, 0.72, 0.045);
         ngSteerCollar.rotation.x = -0.12;
-        noseGearGroup.add(ngSteerCollar);
+        noseGearStrutAssembly.add(ngSteerCollar);
 
         const taxiLightBody = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.036, 0.06, 16), MAT.stealthDarkTrim);
         taxiLightBody.rotation.x = Math.PI / 2;
         taxiLightBody.position.set(0, 0.58, 0.11);
-        noseGearGroup.add(taxiLightBody);
+        noseGearStrutAssembly.add(taxiLightBody);
 
         const taxiLens = new THREE.Mesh(new THREE.CircleGeometry(0.036, 16), MAT.chrome);
         taxiLens.position.set(0, 0.58, 0.142);
-        noseGearGroup.add(taxiLens);
+        noseGearStrutAssembly.add(taxiLens);
 
         const ngPiston = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.048, 0.38, 20), MAT.chrome);
         ngPiston.position.set(0, 0.38, 0.01);
         ngPiston.rotation.x = -0.12;
-        noseGearGroup.add(ngPiston);
+        noseGearStrutAssembly.add(ngPiston);
 
         const tLink1 = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.18, 0.032), MAT.machinedSteel);
         tLink1.position.set(0, 0.50, 0.09);
         tLink1.rotation.x = 0.55;
-        noseGearGroup.add(tLink1);
+        noseGearStrutAssembly.add(tLink1);
 
         const tLink2 = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.18, 0.032), MAT.machinedSteel);
         tLink2.position.set(0, 0.36, 0.09);
         tLink2.rotation.x = -0.55;
-        noseGearGroup.add(tLink2);
+        noseGearStrutAssembly.add(tLink2);
 
         const kneePin = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.08, 12), MAT.brassFitting);
         kneePin.rotation.z = Math.PI / 2;
         kneePin.position.set(0, 0.43, 0.135);
-        noseGearGroup.add(kneePin);
+        noseGearStrutAssembly.add(kneePin);
 
         const ngAxle = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.44, 16), MAT.anodizedGunmetal);
         ngAxle.rotation.z = Math.PI / 2;
         ngAxle.position.set(0, 0.25, 0);
-        noseGearGroup.add(ngAxle);
+        noseGearStrutAssembly.add(ngAxle);
 
         [-0.16, 0.16].forEach(wx => {
             const nWheel = createDetailedAircraftWheel(0.25, 0.14, false);
             nWheel.position.set(wx, 0.25, 0);
-            noseGearGroup.add(nWheel);
+            noseGearStrutAssembly.add(nWheel);
         });
 
+        const noseGearDoors = [];
         [-1, 1].forEach(s => {
+            const doorPivot = new THREE.Group();
+            doorPivot.position.set(s * 0.28, 0.90, 0.02);
+            doorPivot.userData.side = s;
             const door = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.26, 0.62), MAT.stealthHull);
-            door.position.set(s * 0.28, 0.78, 0.02);
+            door.position.set(0, -0.12, 0);
             door.rotation.z = s * 0.18;
-            noseGearGroup.add(door);
+            doorPivot.add(door);
+            noseGearGroup.add(doorPivot);
+            noseGearDoors.push(doorPivot);
         });
+
+        const mainGearRetractPivots = [];
+        const mainGearDoorPivots = [];
+        const groundWheelChocks = [];
 
         [-1, 1].forEach(side => {
             const mainGearSide = new THREE.Group();
             mainGearSide.position.set(0, 0, -0.52);
 
+            // Outer Gear Bay Door hinged at upper fuselage chine
+            const doorPivot = new THREE.Group();
+            doorPivot.position.set(side * 0.98, 1.06, 0.04);
+            doorPivot.userData.side = side;
             const wellDoor = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.38, 0.78), MAT.stealthHull);
-            wellDoor.position.set(side * 1.06, 0.92, 0.04);
+            wellDoor.position.set(side * 0.08, -0.14, 0);
             wellDoor.rotation.z = -side * 0.32;
-            mainGearSide.add(wellDoor);
+            doorPivot.add(wellDoor);
+            mainGearSide.add(doorPivot);
+            mainGearDoorPivots.push(doorPivot);
+
+            // Main Gear Retraction Pivot at fuselage root trunnion (x = side * 0.86, y = 0.96, z = 0)
+            const retractPivot = new THREE.Group();
+            retractPivot.position.set(side * 0.86, 0.96, 0.0);
+            retractPivot.userData.side = side;
+            mainGearSide.add(retractPivot);
+            mainGearRetractPivots.push(retractPivot);
+
+            const strutAssembly = new THREE.Group();
+            strutAssembly.position.set(-side * 0.86, -0.96, 0.0);
+            retractPivot.add(strutAssembly);
 
             const pTop = new THREE.Vector3(side * 0.86, 0.96, 0.12);
             const pMid = new THREE.Vector3(side * 1.18, 0.62, 0.04);
             const pWheel = new THREE.Vector3(side * 1.42, 0.36, -0.04);
 
-            addThickStrut(mainGearSide, pTop.toArray(), pMid.toArray(), 0.058, MAT.anodizedGunmetal);
-            addThickStrut(mainGearSide, pMid.toArray(), pWheel.toArray(), 0.046, MAT.chrome);
-            addThickStrut(mainGearSide, [side * 0.84, 0.92, -0.24], pWheel.toArray(), 0.036, MAT.anodizedGunmetal);
-            addThickStrut(mainGearSide, [side * 0.92, 1.02, 0.0], pMid.toArray(), 0.028, MAT.machinedSteel);
-            addThickStrut(mainGearSide, [side * 0.88, 0.94, 0.08], [side * 1.32, 0.42, 0.02], 0.012, MAT.rubberSeal);
+            addThickStrut(strutAssembly, pTop.toArray(), pMid.toArray(), 0.058, MAT.anodizedGunmetal);
+            addThickStrut(strutAssembly, pMid.toArray(), pWheel.toArray(), 0.046, MAT.chrome);
+            addThickStrut(strutAssembly, [side * 0.84, 0.92, -0.24], pWheel.toArray(), 0.036, MAT.anodizedGunmetal);
+            addThickStrut(strutAssembly, [side * 0.92, 1.02, 0.0], pMid.toArray(), 0.028, MAT.machinedSteel);
+            addThickStrut(strutAssembly, [side * 0.88, 0.94, 0.08], [side * 1.32, 0.42, 0.02], 0.012, MAT.rubberSeal);
 
             const mLinkUpper = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.18, 0.05), MAT.machinedSteel);
             mLinkUpper.position.set(side * 1.22, 0.58, 0.09);
             mLinkUpper.rotation.z = side * 0.45;
-            mainGearSide.add(mLinkUpper);
+            strutAssembly.add(mLinkUpper);
 
             const mLinkLower = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.18, 0.05), MAT.machinedSteel);
             mLinkLower.position.set(side * 1.30, 0.46, 0.09);
             mLinkLower.rotation.z = side * 0.85;
-            mainGearSide.add(mLinkLower);
+            strutAssembly.add(mLinkLower);
 
             const mWheel = createDetailedAircraftWheel(0.36, 0.24, true);
             if (side < 0) mWheel.rotation.y = Math.PI;
             mWheel.position.copy(pWheel);
-            mainGearSide.add(mWheel);
+            strutAssembly.add(mWheel);
 
             if (side < 0) {
                 [0.24, -0.32].forEach(cz => {
@@ -3587,6 +4063,7 @@
                     chock.rotation.z = Math.PI / 2;
                     chock.position.set(side * 1.42, 0.042, cz);
                     mainGearSide.add(chock);
+                    groundWheelChocks.push(chock);
                 });
             }
 
@@ -3657,21 +4134,21 @@
         let windAzimuthRad = THREE.MathUtils.degToRad(45);
         let collectivePitchDeg = 6.0;
 
-        // 36,000 Individual Physical Sand Grains (45% Ground Bed Saltation Layer + 55% Airborne Suspension)
-        const SAND_COUNT = 36000;
+        // 100,000 Individual Physical Sand Grains (48% Ground-Bed Saltation Sheet + 52% Airborne Suspension & Vortex Filaments)
+        const SAND_COUNT = 100000;
         const sandPositions = new Float32Array(SAND_COUNT * 3);
         const sandVelocities = new Float32Array(SAND_COUNT * 3);
-        const sandAttributes = new Float32Array(SAND_COUNT * 3); // [grainSize, quartzGlintSeed, isGroundGrainFlag]
+        const sandAttributes = new Float32Array(SAND_COUNT * 3); // [grainSize, mineralAndGlintSeed, isAirborneFlag]
 
         function resetSandGrain(i, initialSpread = true) {
             const i3 = i * 3;
-            const isGroundDominant = (i % 100) < 46; // 46% ground-bed grains that saltate/creep along dunes
+            const isGroundDominant = (i % 100) < 48; // 48% ground-bed grains that saltate/creep along dunes
 
-            // Concentrate higher density within 22m of the helicopter so every detail is visible
+            // High-density distribution within 24m of the helicopter + outer desert expanse up to 44m
             const u = Math.random();
             const radius = initialSpread
-                ? (u < 0.72 ? Math.sqrt(Math.random()) * 16.5 : 16.5 + Math.random() * 24.0)
-                : (Math.random() < 0.65 ? Math.sqrt(Math.random()) * 15.0 : 15.0 + Math.random() * 22.0);
+                ? (u < 0.78 ? Math.sqrt(Math.random()) * 18.0 : 18.0 + Math.random() * 26.0)
+                : (Math.random() < 0.72 ? Math.sqrt(Math.random()) * 16.5 : 16.5 + Math.random() * 24.0);
             const theta = Math.random() * Math.PI * 2;
 
             const px = Math.cos(theta) * radius;
@@ -3680,23 +4157,24 @@
 
             let py;
             if (isGroundDominant) {
-                // Resting or saltating right on the desert floor ripples
-                py = groundY + 0.008 + Math.random() * 0.06;
+                // Resting or saltating right on the desert floor ripples (0.5cm - 8cm boundary layer)
+                py = groundY + 0.005 + Math.random() * 0.075;
             } else {
-                // Suspended in the air column or rotor inflow/outflow
-                py = groundY + 0.05 + Math.pow(Math.random(), 1.7) * 7.2;
+                // Suspended in the air column, rotor inflow, or brownout vortex ring
+                py = groundY + 0.03 + Math.pow(Math.random(), 1.85) * 6.8;
             }
 
             sandPositions[i3]     = px;
             sandPositions[i3 + 1] = py;
             sandPositions[i3 + 2] = pz;
 
-            sandVelocities[i3]     = (Math.random() - 0.5) * 0.4;
+            sandVelocities[i3]     = (Math.random() - 0.5) * 0.35;
             sandVelocities[i3 + 1] = 0.0;
-            sandVelocities[i3 + 2] = (Math.random() - 0.5) * 0.4;
+            sandVelocities[i3 + 2] = (Math.random() - 0.5) * 0.35;
 
-            // grainSize (1.0 - 2.8), glintSeed (0 - 6.28), state (0 = resting on ground, 1 = airborne/saltating)
-            sandAttributes[i3]     = 0.9 + Math.random() * 1.9;
+            // 92% ultra-fine crisp quartz sand grains (0.55 - 1.30), 8% fine silt haze micro-clusters (1.45 - 2.35)
+            const isFineGrain = (i % 12) !== 0;
+            sandAttributes[i3]     = isFineGrain ? (0.55 + Math.random() * 0.75) : (1.45 + Math.random() * 0.90);
             sandAttributes[i3 + 1] = Math.random() * Math.PI * 2;
             sandAttributes[i3 + 2] = isGroundDominant ? 0.0 : 1.0;
         }
@@ -3716,7 +4194,8 @@
         sandGeo.setAttribute('aVelocity', velAttr);
         sandGeo.setAttribute('aMeta', metaAttr);
 
-        // Custom ShaderMaterial for Individual Sand Grains (Quartz Specular Glint + Velocity Stretch)
+        // Custom ShaderMaterial for 100,000 Fine Quartz Sand Grains:
+        // Keeps cross-axis diameter razor-thin (1-2.5px) while stretching along velocity with energy-conserving opacity
         const sandShaderMat = new THREE.ShaderMaterial({
             transparent: true,
             depthWrite: false,
@@ -3724,17 +4203,22 @@
             uniforms: {
                 uTime: { value: 0 },
                 uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
-                uSunDir: { value: new THREE.Vector3(0.55, 0.72, 0.42).normalize() }
+                uSunDir: { value: new THREE.Vector3(0.48, 0.58, 0.44).normalize() }
             },
             vertexShader: `
                 attribute vec3 aVelocity;
                 attribute vec3 aMeta;
                 uniform float uTime;
                 uniform float uPixelRatio;
-                varying float vSpeed;
+                uniform vec3 uSunDir;
+
+                varying float vStretch;
                 varying float vGlint;
-                varying float vGrounded;
-                varying float vHeightAboveGround;
+                varying float vMineralSeed;
+                varying float vHeightNorm;
+                varying float vShadowFactor;
+                varying float vSunScatter;
+                varying float vIsSilt;
                 varying vec2 vVelDir;
 
                 void main() {
@@ -3742,56 +4226,82 @@
                     gl_Position = projectionMatrix * mvPosition;
 
                     float speed = length(aVelocity);
-                    vSpeed = speed;
-                    vGrounded = aMeta.z;
-                    vHeightAboveGround = clamp(position.y * 0.25, 0.0, 1.0);
+                    // Motion-blur stretch factor along the 2D projected velocity vector
+                    vStretch = 1.0 + clamp(speed * 0.16, 0.0, 2.8);
+                    vMineralSeed = fract(aMeta.y * 0.3183);
+                    vIsSilt = step(1.4, aMeta.x);
+                    vHeightNorm = clamp(position.y * 0.22, 0.0, 1.0);
 
-                    // Project 3D velocity into 2D screen space for directional streak orientation
+                    // Helicopter fuselage & stub-wing shadow attenuation right under the belly
+                    float bellyDistSq = (position.x * position.x) * 0.35 + (position.z * position.z) * 0.09;
+                    float underBelly = smoothstep(0.4, 2.2, bellyDistSq) + smoothstep(1.2, 3.2, position.y);
+                    vShadowFactor = clamp(0.58 + 0.42 * clamp(underBelly, 0.0, 1.0), 0.58, 1.0);
+
+                    // Mie forward scattering when looking toward the desert sun through airborne sand
+                    vec3 viewDir = normalize(position - cameraPosition);
+                    float sunCos = max(0.0, dot(viewDir, uSunDir));
+                    vSunScatter = pow(sunCos, 4.0) * 0.38;
+
+                    // Project 3D velocity into 2D screen space for true directional sand streaking
                     vec3 viewVel = mat3(modelViewMatrix) * aVelocity;
                     vec2 screenDir = viewVel.xy;
                     float lenDir = length(screenDir);
                     vVelDir = lenDir > 0.001 ? (screenDir / lenDir) : vec2(1.0, 0.0);
 
-                    // Quartz crystal sun sparkle modulation
-                    vGlint = 0.5 + 0.5 * sin(uTime * 7.5 + aMeta.y * 12.0 + position.x * 3.5 + position.z * 3.5);
+                    // Subtle high-frequency quartz crystal sun sparkle
+                    vGlint = 0.5 + 0.5 * sin(uTime * 6.5 + aMeta.y * 15.0 + position.x * 4.5 + position.z * 4.5);
 
-                    // Size attenuation: crisp individual sand grains up close, slightly larger when fast-streaking
-                    float baseSize = aMeta.x * (1.0 + clamp(speed * 0.055, 0.0, 1.35));
-                    float dist = max(1.2, -mvPosition.z);
-                    gl_PointSize = clamp((baseSize * 26.0 * uPixelRatio) / dist, 1.35, 14.0);
+                    // Fine sand grain size: gl_PointSize scales by vStretch so the stretched major axis fits inside the point sprite,
+                    // while the fragment shader narrows the minor axis by vStretch so the grain stays razor-thin (never a chunky blob!)
+                    float dist = max(1.1, -mvPosition.z);
+                    float baseRadiusPx = (aMeta.x * 10.5 * uPixelRatio) / dist;
+                    float clampedBase = clamp(baseRadiusPx, 1.15, vIsSilt > 0.5 ? 5.2 : 3.1);
+                    gl_PointSize = clamp(clampedBase * vStretch, 1.2, 9.5);
                 }
             `,
             fragmentShader: `
-                varying float vSpeed;
+                varying float vStretch;
                 varying float vGlint;
-                varying float vGrounded;
-                varying float vHeightAboveGround;
+                varying float vMineralSeed;
+                varying float vHeightNorm;
+                varying float vShadowFactor;
+                varying float vSunScatter;
+                varying float vIsSilt;
                 varying vec2 vVelDir;
 
                 void main() {
                     vec2 uv = gl_PointCoord - vec2(0.5);
 
-                    // Rotate UV along screen-space velocity direction to stretch fast-moving sand grains
+                    // Rotate UV into [along-velocity, across-velocity] coordinates
                     vec2 perpDir = vec2(-vVelDir.y, vVelDir.x);
                     float along = dot(uv, vVelDir);
-                    float across = dot(uv, perpDir);
+                    // Narrow the cross-velocity axis by vStretch so the sand grain stays micro-thin!
+                    float across = dot(uv, perpDir) * vStretch;
 
-                    float stretch = 1.0 + clamp(vSpeed * 0.14, 0.0, 2.2);
-                    float r2 = (along / stretch) * (along / stretch) + across * across;
+                    float r2 = along * along + across * across;
                     if (r2 > 0.25) discard;
 
-                    // Crisp faceted sand grain core with soft atmospheric edge
-                    float radialAlpha = smoothstep(0.25, 0.04, r2);
+                    // Gaussian / Mie soft micro-grain profile (zero hard blocky edges)
+                    float radialProfile = exp(-r2 * (vIsSilt > 0.5 ? 11.5 : 15.5));
 
-                    // Base ochre-gold desert quartz color + sunlit glint
-                    vec3 darkSand = vec3(0.68, 0.51, 0.34);
-                    vec3 brightSand = vec3(0.95, 0.84, 0.66);
-                    vec3 specularGlint = vec3(1.0, 0.97, 0.88) * pow(vGlint, 5.0) * 0.55;
+                    // Natural desert mineral palette: pale silica quartz, golden buff ochre, warm sienna
+                    vec3 mineralA = vec3(0.82, 0.66, 0.46);
+                    vec3 mineralB = vec3(0.93, 0.80, 0.61);
+                    vec3 mineralC = vec3(0.73, 0.55, 0.37);
+                    vec3 baseSand = mix(mineralC, mineralA, smoothstep(0.0, 0.6, vMineralSeed));
+                    baseSand = mix(baseSand, mineralB, smoothstep(0.45, 1.0, vMineralSeed));
 
-                    vec3 col = mix(darkSand, brightSand, clamp(vHeightAboveGround * 0.55 + vGlint * 0.45, 0.0, 1.0)) + specularGlint;
-                    float alpha = radialAlpha * mix(0.88, 0.78, clamp(vSpeed * 0.05, 0.0, 1.0));
+                    // Brighten slightly with altitude & sun forward scattering + quartz micro-glint
+                    vec3 litSand = mix(baseSand, vec3(0.97, 0.88, 0.73), vHeightNorm * 0.42 + vSunScatter);
+                    litSand += vec3(1.0, 0.96, 0.86) * pow(vGlint, 8.0) * (1.0 - vIsSilt) * 0.38;
+                    litSand *= vShadowFactor;
 
-                    gl_FragColor = vec4(col, alpha);
+                    // Energy-conserving motion blur: faster stretched grains become proportionally more translucent
+                    float energyConservation = inversesqrt(vStretch);
+                    float baseAlpha = vIsSilt > 0.5 ? 0.19 : 0.64;
+                    float alpha = radialProfile * baseAlpha * energyConservation;
+
+                    gl_FragColor = vec4(litSand, alpha);
                 }
             `
         });
@@ -3883,46 +4393,70 @@
         // Reusable output vector to compute exact 3D airflow velocity at any world coordinate (px, py, pz)
         const _flowOut = { vx: 0, vy: 0, vz: 0 };
 
+        // Interactive Helicopter Flight State (Controlled via WASD + R/F / Mobile Touch Pads when UI is Hidden)
+        const heliFlight = {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+            vx: 0.0,
+            vy: 0.0,
+            vz: 0.0,
+            yaw: 0.0,
+            yawRate: 0.0,
+            pitch: 0.0,
+            roll: 0.0,
+            hoverAlt: 0.0,
+            targetAlt: 0.0,
+            gearRetract: 0.0, // 0.0 = Down & Locked, 1.0 = Fully Retracted into Wheel Wells
+            inputs: { w: false, s: false, a: false, d: false, r: false, f: false },
+            gyroEnabled: false,
+            gyroCalibrated: false,
+            gyroBaseBeta: 45,
+            gyroBaseGamma: 0,
+            gyroCurrentBeta: 45,
+            gyroCurrentGamma: 0
+        };
+
+        // Detect touch-capable mobile/tablet devices to show minimalist touch buttons only on touch screens
+        window.addEventListener('touchstart', function onFirstTouch() {
+            document.body.classList.add('is-touch-device');
+            window.removeEventListener('touchstart', onFirstTouch);
+        }, { passive: true });
+
+        function localToWorldHeli(lx, ly, lz) {
+            const cosY = Math.cos(heliFlight.yaw);
+            const sinY = Math.sin(heliFlight.yaw);
+            return {
+                x: heliFlight.x + lx * cosY + lz * sinY,
+                y: heliFlight.y + ly,
+                z: heliFlight.z - lx * sinY + lz * cosY
+            };
+        }
+
         function syncSubsystemAerodynamicCenters() {
-            // 0: Fuselage
-            activeColliders[0].x = sysFuselage.position.x;
-            activeColliders[0].y = 1.55 + sysFuselage.position.y;
-            activeColliders[0].z = 1.25 + sysFuselage.position.z;
-            // 1: Canopy
-            activeColliders[1].x = sysCanopy.position.x;
-            activeColliders[1].y = 2.15 + sysCanopy.position.y;
-            activeColliders[1].z = 1.95 + sysCanopy.position.z;
-            // 2: FLIR Ball
-            activeColliders[2].x = sysFlir.position.x;
-            activeColliders[2].y = 0.92 + sysFlir.position.y;
-            activeColliders[2].z = 4.32 + sysFlir.position.z;
-            // 3: Doghouse
-            activeColliders[3].x = sysDoghouse.position.x;
-            activeColliders[3].y = 2.68 + sysDoghouse.position.y;
-            activeColliders[3].z = -0.20 + sysDoghouse.position.z;
-            // 4 & 5: Stub Wings (including lateral spread in Exploded View)
             const wingSpread = currentExplode * 1.45;
-            activeColliders[4].x = -1.75 - wingSpread + sysWings.position.x;
-            activeColliders[4].y = 1.44 + sysWings.position.y;
-            activeColliders[4].z = -0.35 + sysWings.position.z;
-            activeColliders[5].x = 1.75 + wingSpread + sysWings.position.x;
-            activeColliders[5].y = 1.44 + sysWings.position.y;
-            activeColliders[5].z = -0.35 + sysWings.position.z;
-            // 6 & 7: Engine Nacelles
-            activeColliders[6].x = -0.72 + sysNacelleL.position.x;
-            activeColliders[6].y = 2.10 + sysNacelleL.position.y;
-            activeColliders[6].z = -0.25 + sysNacelleL.position.z;
-            activeColliders[7].x = 0.72 + sysNacelleR.position.x;
-            activeColliders[7].y = 2.10 + sysNacelleR.position.y;
-            activeColliders[7].z = -0.25 + sysNacelleR.position.z;
-            // 8: Tail Assembly
-            activeColliders[8].x = sysTailAssembly.position.x;
-            activeColliders[8].y = 1.75 + sysTailAssembly.position.y;
-            activeColliders[8].z = -3.55 + sysTailAssembly.position.z;
-            // 9, 10, 11: Landing Gear Wheels
-            activeColliders[9].y  = 0.36 + sysLandingGear.position.y;
-            activeColliders[10].y = 0.38 + sysLandingGear.position.y;
-            activeColliders[11].y = 0.38 + sysLandingGear.position.y;
+            const gearLift = heliFlight.gearRetract * 0.65;
+            const localCenters = [
+                [sysFuselage.position.x, 1.55 + sysFuselage.position.y, 1.25 + sysFuselage.position.z],
+                [sysCanopy.position.x, 2.15 + sysCanopy.position.y, 1.95 + sysCanopy.position.z],
+                [sysFlir.position.x, 0.92 + sysFlir.position.y, 4.32 + sysFlir.position.z],
+                [sysDoghouse.position.x, 2.68 + sysDoghouse.position.y, -0.20 + sysDoghouse.position.z],
+                [-1.75 - wingSpread + sysWings.position.x, 1.44 + sysWings.position.y, -0.35 + sysWings.position.z],
+                [1.75 + wingSpread + sysWings.position.x, 1.44 + sysWings.position.y, -0.35 + sysWings.position.z],
+                [-0.72 + sysNacelleL.position.x, 2.10 + sysNacelleL.position.y, -0.25 + sysNacelleL.position.z],
+                [0.72 + sysNacelleR.position.x, 2.10 + sysNacelleR.position.y, -0.25 + sysNacelleR.position.z],
+                [sysTailAssembly.position.x, 1.75 + sysTailAssembly.position.y, -3.55 + sysTailAssembly.position.z],
+                [0, 0.36 + gearLift + sysLandingGear.position.y, 2.85],
+                [(-1.42 * (1.0 - heliFlight.gearRetract * 0.45)), 0.38 + gearLift + sysLandingGear.position.y, -0.56],
+                [( 1.42 * (1.0 - heliFlight.gearRetract * 0.45)), 0.38 + gearLift + sysLandingGear.position.y, -0.56]
+            ];
+
+            for (let i = 0; i < localCenters.length; i++) {
+                const wp = localToWorldHeli(localCenters[i][0], localCenters[i][1], localCenters[i][2]);
+                activeColliders[i].x = wp.x;
+                activeColliders[i].y = wp.y;
+                activeColliders[i].z = wp.z;
+            }
         }
 
         /**
@@ -3934,6 +4468,15 @@
         function sampleAerodynamicField(px, py, pz, groundY, elapsed, lowerBladeAng, upperBladeAng) {
             const heightAboveGround = Math.max(0.0, py - groundY);
 
+            // Transform world query point into Helicopter Local Frame so airflow moves & rotates with the aircraft!
+            const dxWorld = px - heliFlight.x;
+            const dzWorld = pz - heliFlight.z;
+            const cosY = Math.cos(heliFlight.yaw);
+            const sinY = Math.sin(heliFlight.yaw);
+            const localX = dxWorld * cosY - dzWorld * sinY;
+            const localZ = dxWorld * sinY + dzWorld * cosY;
+            const localY = py - heliFlight.y;
+
             // 1. Ambient Desert Wind with Boundary-Layer Shear & Gust Turbulence
             const boundaryFactor = Math.min(1.0, 0.32 + 0.68 * Math.pow(heightAboveGround / 3.5, 0.35));
             const gustWave = 1.0 + 0.32 * Math.sin(px * 0.22 + pz * 0.18 - elapsed * 2.6)
@@ -3943,13 +4486,16 @@
             let vz = -Math.cos(windAzimuthRad) * windMag;
             let vy = 0.25 * ambientWindStrength * Math.sin(px * 0.4 + pz * 0.4 - elapsed * 3.0);
 
+            // Local aerodynamic forces accumulated in helicopter frame, then rotated to world
+            let lvx = 0.0, lvy = 0.0, lvz = 0.0;
+
             // 2. Coaxial Counter-Rotating Main Rotor Aerodynamics + Ground Brownout Vortex Ring
             const pitchFactor = Math.max(0.18, (collectivePitchDeg + 5.5) / 11.5);
             const rotorPower = currentRotorSpeed * pitchFactor * aeroForceMultiplier;
 
             if (rotorPower > 0.005) {
-                const rx = px - sysRotorLower.position.x;
-                const rz = pz - (rotorCenterZ + sysRotorLower.position.z);
+                const rx = localX - sysRotorLower.position.x;
+                const rz = localZ - (rotorCenterZ + sysRotorLower.position.z);
                 const rSq = rx * rx + rz * rz;
                 const r = Math.sqrt(rSq) + 0.0001;
                 const R = 5.45; // Rotor blade tip radius
@@ -3957,7 +4503,7 @@
                 const lowerY = lowerHubY + sysRotorLower.position.y;
                 const upperY = upperHubY + sysRotorUpper.position.y;
 
-                if (r < 14.5 && py < upperY + 2.8) {
+                if (r < 14.5 && localY < upperY + 2.8) {
                     const invR = 1.0 / r;
                     const radDirX = rx * invR;
                     const radDirZ = rz * invR;
@@ -3965,46 +4511,43 @@
                     const tangDirZ = radDirX;
 
                     // 2A. Suction Inflow above the coaxial discs
-                    if (py > lowerY) {
-                        const inflowDecay = Math.exp(-rSq / (R * R * 1.15)) * Math.exp(-(py - lowerY) * 0.65);
-                        vy -= rotorPower * 10.5 * inflowDecay;
-                        vx -= radDirX * rotorPower * 4.2 * inflowDecay;
-                        vz -= radDirZ * rotorPower * 4.2 * inflowDecay;
+                    if (localY > lowerY) {
+                        const inflowDecay = Math.exp(-rSq / (R * R * 1.15)) * Math.exp(-(localY - lowerY) * 0.65);
+                        lvy -= rotorPower * 10.5 * inflowDecay;
+                        lvx -= radDirX * rotorPower * 4.2 * inflowDecay;
+                        lvz -= radDirZ * rotorPower * 4.2 * inflowDecay;
                     } else {
                         // 2B. Coaxial Downwash Column + 8-Blade Harmonic Pressure Pulses
                         const radialCore = Math.exp(-Math.pow(r / (R * 1.06), 2.2));
                         const angle = Math.atan2(rz, rx);
-                        // 4 blades on lower rotor (+spin) and 4 blades on upper rotor (-spin)
                         const bladePulse = 1.0 + 0.28 * Math.cos(4.0 * (angle - lowerBladeAng))
                                                + 0.28 * Math.cos(4.0 * (angle - upperBladeAng));
 
-                        // Downward velocity transitions into radial outward wall-jet near the desert floor
                         const groundProximity = Math.exp(-heightAboveGround / 1.15);
                         const verticalJet = rotorPower * 16.5 * radialCore * bladePulse * (1.0 - groundProximity * 0.72);
-                        vy -= verticalJet;
+                        lvy -= verticalJet;
 
                         // Blade tip helical vortices at r ~ R
                         const tipDist = r - R * 0.92;
                         const tipVortex = Math.exp(-(tipDist * tipDist) / 1.15) * Math.exp(-heightAboveGround * 0.25);
-                        const swirlSign = Math.sin(4.0 * (angle - lowerBladeAng) - py * 1.5);
-                        vx += tangDirX * rotorPower * 5.2 * tipVortex * swirlSign;
-                        vz += tangDirZ * rotorPower * 5.2 * tipVortex * swirlSign;
+                        const swirlSign = Math.sin(4.0 * (angle - lowerBladeAng) - localY * 1.5);
+                        lvx += tangDirX * rotorPower * 5.2 * tipVortex * swirlSign;
+                        lvz += tangDirZ * rotorPower * 5.2 * tipVortex * swirlSign;
 
-                        // 2C. Ground Impingement Radial Wall-Jet (Scours sand radially outward under belly & wheels)
+                        // 2C. Ground Impingement Radial Wall-Jet
                         const wallJetProfile = (r / R) * Math.exp(-Math.pow((r - R * 0.78) / (R * 0.72), 2.0));
                         const wallJetSpeed = rotorPower * 21.0 * wallJetProfile * groundProximity * bladePulse;
-                        vx += radDirX * wallJetSpeed;
-                        vz += radDirZ * wallJetSpeed;
+                        lvx += radDirX * wallJetSpeed;
+                        lvz += radDirZ * wallJetSpeed;
 
                         // 2D. Brownout Vortex Ring Updraft Curl (at r = 5.0m to 12.0m)
                         const ringDist = r - R * 1.32;
                         const ringUpdraft = Math.exp(-(ringDist * ringDist) / 5.5) * Math.exp(-heightAboveGround / 2.6);
-                        vy += rotorPower * 8.4 * ringUpdraft * (0.75 + 0.25 * Math.sin(angle * 5.0 + elapsed * 4.0));
-                        // Slight inward recirculation at top of brownout torus (height > 1.4m)
+                        lvy += rotorPower * 8.4 * ringUpdraft * (0.75 + 0.25 * Math.sin(angle * 5.0 + elapsed * 4.0));
                         if (heightAboveGround > 1.35) {
                             const recirc = Math.exp(-Math.pow(heightAboveGround - 2.4, 2.0) / 1.8) * ringUpdraft;
-                            vx -= radDirX * rotorPower * 5.5 * recirc;
-                            vz -= radDirZ * rotorPower * 5.5 * recirc;
+                            lvx -= radDirX * rotorPower * 5.5 * recirc;
+                            lvz -= radDirZ * rotorPower * 5.5 * recirc;
                         }
                     }
                 }
@@ -4012,11 +4555,10 @@
 
             // 3. Enclosed Tail Thruster Ducted Slipstream & Suction (at tail boom end)
             if (currentRotorSpeed > 0.005) {
-                const tx = px - sysTailAssembly.position.x;
-                const ty = py - (ductCenterY + sysTailAssembly.position.y);
-                const tz = pz - (ductCenterZ + sysTailAssembly.position.z);
+                const tx = localX - sysTailAssembly.position.x;
+                const ty = localY - (ductCenterY + sysTailAssembly.position.y);
+                const tz = localZ - (ductCenterZ + sysTailAssembly.position.z);
 
-                // The enclosed thruster accelerates air rearward (-Z) and slightly laterally (+X yaw control)
                 if (tz < 1.2 && tz > -9.5) {
                     const ductRadialSq = tx * tx + ty * ty;
                     const jetSpread = 0.85 + Math.max(0.0, -tz) * 0.24;
@@ -4025,49 +4567,51 @@
                         const axialDecay = tz > 0 ? Math.exp(-tz * 2.5) : Math.exp(tz * 0.18);
                         const thrustMag = currentRotorSpeed * aeroForceMultiplier * 18.5 * jetCore * axialDecay;
 
-                        vz -= thrustMag;
-                        vx += thrustMag * 0.22; // Anti-torque / yaw vectoring component
-                        // Helical swirl inside tail slipstream
-                        vx += (-ty) * thrustMag * 0.35;
-                        vy += (tx) * thrustMag * 0.35;
+                        lvz -= thrustMag;
+                        lvx += thrustMag * 0.22;
+                        lvx += (-ty) * thrustMag * 0.35;
+                        lvy += (tx) * thrustMag * 0.35;
                     }
                 }
             }
 
-            // 4. Twin Turboshaft Intakes (Suction Sinks) & IR Suppressor Exhausts (Angled High-Speed Plumes)
+            // 4. Twin Turboshaft Intakes (Suction Sinks) & IR Suppressor Exhausts
             if (currentRotorSpeed > 0.005) {
                 const engPower = currentRotorSpeed * aeroForceMultiplier;
 
-                // Port (-1) & Starboard (+1) Engine Intakes at z ~ 0.55
                 for (let side = -1; side <= 1; side += 2) {
                     const nacSys = side < 0 ? sysNacelleL : sysNacelleR;
-                    const ix = px - (side * 0.72 + nacSys.position.x);
-                    const iy = py - (2.10 + nacSys.position.y);
-                    const iz = pz - (0.58 + nacSys.position.z);
+                    const ix = localX - (side * 0.72 + nacSys.position.x);
+                    const iy = localY - (2.10 + nacSys.position.y);
+                    const iz = localZ - (0.58 + nacSys.position.z);
                     const iDistSq = ix * ix + iy * iy + iz * iz;
                     if (iDistSq < 1.8 && iz > -0.2) {
                         const suction = engPower * 8.5 * Math.exp(-iDistSq * 2.2) / (Math.sqrt(iDistSq) + 0.15);
-                        vx -= ix * suction;
-                        vy -= iy * suction;
-                        vz -= iz * suction;
+                        lvx -= ix * suction;
+                        lvy -= iy * suction;
+                        lvz -= iz * suction;
                     }
 
-                    // IR Suppressor Exhaust Nozzles & Louvers at z ~ -1.28
-                    const ex = px - (side * 0.74 + sysExhaust.position.x);
-                    const ey = py - (1.98 + sysExhaust.position.y);
-                    const ez = pz - (-1.28 + sysExhaust.position.z);
+                    const ex = localX - (side * 0.74 + sysExhaust.position.x);
+                    const ey = localY - (1.98 + sysExhaust.position.y);
+                    const ez = localZ - (-1.28 + sysExhaust.position.z);
                     if (ez < 0.2 && ez > -5.5) {
                         const plumeW = 0.38 + (-ez) * 0.22;
                         const crossSq = (ex - side * (-ez) * 0.22) * (ex - side * (-ez) * 0.22) + ey * ey;
                         if (crossSq < plumeW * plumeW * 2.5) {
                             const plumeStrength = engPower * 14.0 * Math.exp(-crossSq / (plumeW * plumeW)) * Math.exp(ez * 0.32);
-                            vz -= plumeStrength;
-                            vx += side * plumeStrength * 0.28;
-                            vy += plumeStrength * 0.08;
+                            lvz -= plumeStrength;
+                            lvx += side * plumeStrength * 0.28;
+                            lvy += plumeStrength * 0.08;
                         }
                     }
                 }
             }
+
+            // Rotate helicopter-local aerodynamic velocity into world space
+            vx += lvx * cosY + lvz * sinY;
+            vy += lvy;
+            vz += -lvx * sinY + lvz * cosY;
 
             // 5. 3D Potential-Flow Deflection around Fuselage, Canopy, Stub Wings, Nacelles & Wheels
             for (let c = 0; c < activeColliders.length; c++) {
@@ -4077,15 +4621,16 @@
                 const dz = (pz - col.z) / col.rz;
                 const normDistSq = dx * dx + dy * dy + dz * dz;
 
-                // Influence shell around the subsystem ellipsoid
                 if (normDistSq < 2.25 && normDistSq > 0.0001) {
                     const normDist = Math.sqrt(normDistSq);
                     const nx = dx / normDist;
                     const ny = dy / normDist;
                     const nz = dz / normDist;
 
-                    // Deflect incoming flow tangentially around the 3D armor/wing surface
-                    const dotFlow = vx * nx + vy * ny + vz * nz;
+                    // Account for the helicopter's own translational velocity pushing air/sand out of the way
+                    const relVx = vx - heliFlight.vx;
+                    const relVz = vz - heliFlight.vz;
+                    const dotFlow = relVx * nx + vy * ny + relVz * nz;
                     const shieldFactor = Math.max(0.0, (1.5 - normDist) / 0.5);
                     if (dotFlow < 0) {
                         const deflect = Math.min(1.35, shieldFactor * 1.1);
@@ -4093,12 +4638,11 @@
                         vy -= dotFlow * ny * deflect;
                         vz -= dotFlow * nz * deflect;
                     }
-                    // Outward pressure cushion right at the hull skin (normDist < 1.05)
                     if (normDist < 1.08) {
                         const pushOut = (1.08 - normDist) * 14.0;
-                        vx += nx * pushOut;
+                        vx += nx * pushOut + heliFlight.vx * 0.45;
                         vy += ny * pushOut;
-                        vz += nz * pushOut;
+                        vz += nz * pushOut + heliFlight.vz * 0.45;
                     }
                 }
             }
@@ -4110,16 +4654,16 @@
         }
 
         /**
-         * Updates all 36,000 individual sand grains and 160 3D aerodynamic streamlines every frame.
+         * Updates all 100,000 individual sand grains and 160 3D aerodynamic streamlines every frame.
          */
         function updateAerodynamicSandPhysics(dt, elapsed) {
             syncSubsystemAerodynamicCenters();
 
             const lowerBladeAng = lowerRotorSpinGroup.rotation.y;
             const upperBladeAng = upperRotorSpinGroup.rotation.y;
-            const dragRate = Math.min(1.0, dt * 4.8);
+            const dragRate = Math.min(1.0, dt * 5.2);
 
-            // 1. Update 36,000 Sand Grains
+            // 1. Update 100,000 Sand Grains
             for (let i = 0; i < SAND_COUNT; i++) {
                 const i3 = i * 3;
                 let px = sandPositions[i3];
@@ -4139,45 +4683,49 @@
                 const airSpeedSq = flow.vx * flow.vx + flow.vy * flow.vy + flow.vz * flow.vz;
                 const heightAboveGround = py - groundY;
 
-                // Gravity scaled by grain size (heavier quartz grains settle faster)
-                const gravity = 2.6 + grainSize * 0.95;
+                // Gravity scaled by grain size (heavier quartz grains settle faster; fine silt stays suspended longer)
+                const gravity = 2.1 + grainSize * 0.85;
 
-                if (heightAboveGround <= 0.025) {
-                    // GRAIN IS ON THE DESERT FLOOR (Saltation & Surface Creep Physics)
-                    py = groundY + 0.008;
+                if (heightAboveGround <= 0.022) {
+                    // GRAIN IS ON THE DESERT FLOOR (Saltation & Eolian Surface Creep Physics)
+                    py = groundY + 0.005;
 
                     // Critical shear velocity required to lift this grain off the ground
-                    const critSpeedSq = 12.5 * grainSize;
+                    const critSpeedSq = 10.5 * grainSize;
                     if (airSpeedSq > critSpeedSq) {
                         // Saltation lift-off! Shear stress rips the sand grain into the boundary layer
                         const excess = Math.sqrt(airSpeedSq) - Math.sqrt(critSpeedSq);
-                        const liftImpulse = (0.35 + 0.65 * Math.abs(Math.sin(i * 1.7 + elapsed * 19.0))) * Math.min(7.5, excess * 0.42);
+                        const liftImpulse = (0.30 + 0.70 * Math.abs(Math.sin(i * 1.7 + elapsed * 19.0))) * Math.min(6.8, excess * 0.38);
                         vy = liftImpulse;
-                        vx = flow.vx * 0.55;
-                        vz = flow.vz * 0.55;
+                        vx = flow.vx * 0.58;
+                        vz = flow.vz * 0.58;
                         sandAttributes[i3 + 2] = 1.0; // Now airborne
-                    } else if (airSpeedSq > 1.8) {
+                    } else if (airSpeedSq > 1.4) {
                         // Surface creep along the sand ripples
-                        vx = flow.vx * 0.22;
-                        vz = flow.vz * 0.22;
+                        vx = flow.vx * 0.25;
+                        vz = flow.vz * 0.25;
                         vy = 0.0;
                         sandAttributes[i3 + 2] = 0.0;
                     } else {
-                        vx *= 0.7;
-                        vz *= 0.7;
+                        vx *= 0.68;
+                        vz *= 0.68;
                         vy = 0.0;
                         sandAttributes[i3 + 2] = 0.0;
                     }
                 } else {
                     // GRAIN IS AIRBORNE (Aerodynamic Drag Coupling + Turbulent Vortex Swirl + Gravity)
-                    const invMassDrag = dragRate / (0.65 + grainSize * 0.35);
+                    const invMassDrag = dragRate / (0.58 + grainSize * 0.32);
                     vx += (flow.vx - vx) * invMassDrag;
                     vy += (flow.vy - vy) * invMassDrag - gravity * dt;
                     vz += (flow.vz - vz) * invMassDrag;
 
-                    // Micro-turbulence eddy flutter
-                    const eddy = 0.65 * Math.sin(elapsed * 8.0 + glintSeed * 6.0);
-                    vy += eddy * dt;
+                    // High-frequency turbulent shear eddy flutter
+                    const eddyX = 0.75 * Math.cos(elapsed * 7.2 + glintSeed * 5.0 + py * 2.1);
+                    const eddyY = 0.65 * Math.sin(elapsed * 8.4 + glintSeed * 6.0);
+                    const eddyZ = 0.75 * Math.sin(elapsed * 6.8 - glintSeed * 4.5 + px * 1.8);
+                    vx += eddyX * dt;
+                    vy += eddyY * dt;
+                    vz += eddyZ * dt;
                 }
 
                 // Integrate position
@@ -4185,34 +4733,25 @@
                 py += vy * dt;
                 pz += vz * dt;
 
-                // Ground collision & saltation bounce
-                const newGroundY = getDesertHeight(px, pz);
-                if (py < newGroundY + 0.008) {
-                    py = newGroundY + 0.008;
-                    const impactSpeed = -vy;
-                    if (impactSpeed > 1.6) {
-                        // Saltation splash bounce on hard desert sand
-                        vy = impactSpeed * 0.28;
-                        vx *= 0.78;
-                        vz *= 0.78;
-                    } else {
-                        vy = 0.0;
-                        sandAttributes[i3 + 2] = 0.0;
-                    }
-                }
-
-                // Recycle grains that blow outside the 42m simulation arena or rise too high
-                if (px * px + pz * pz > 1764.0 || py > 15.5) {
+                // Ground collision & saltation splash bounce
+                // Recycle grains that blow outside the 44m simulation arena around the moving helicopter or rise too high
+                const relX = px - heliFlight.x;
+                const relZ = pz - heliFlight.z;
+                if (relX * relX + relZ * relZ > 1936.0 || py > heliFlight.y + 15.0) {
                     resetSandGrain(i, false);
-                    // Respawn upwind or near the rotor inflow so the sandstorm never depletes
-                    if (Math.random() < 0.55 && ambientWindStrength > 0.1) {
-                        const spawnDist = 14.0 + Math.random() * 20.0;
-                        const spreadAngle = windAzimuthRad + (Math.random() - 0.5) * 1.4;
-                        const sx = Math.sin(spreadAngle) * spawnDist;
-                        const sz = Math.cos(spreadAngle) * spawnDist;
+                    sandPositions[i3]     += heliFlight.x;
+                    sandPositions[i3 + 2] += heliFlight.z;
+                    // Respawn upwind or near the rotor inflow so the 100,000-grain sandstorm never depletes
+                    if (Math.random() < 0.58 && ambientWindStrength > 0.08) {
+                        const spawnDist = 14.0 + Math.random() * 22.0;
+                        const spreadAngle = windAzimuthRad + (Math.random() - 0.5) * 1.45;
+                        const sx = heliFlight.x + Math.sin(spreadAngle) * spawnDist;
+                        const sz = heliFlight.z + Math.cos(spreadAngle) * spawnDist;
                         sandPositions[i3]     = sx;
                         sandPositions[i3 + 2] = sz;
-                        sandPositions[i3 + 1] = getDesertHeight(sx, sz) + 0.02 + Math.random() * 2.5;
+                        sandPositions[i3 + 1] = getDesertHeight(sx, sz) + 0.015 + Math.random() * 2.2;
+                    } else {
+                        sandPositions[i3 + 1] = getDesertHeight(sandPositions[i3], sandPositions[i3 + 2]) + 0.01 + Math.random() * 1.5;
                     }
                 } else {
                     sandPositions[i3]     = px;
@@ -4243,8 +4782,17 @@
                     const flow = sampleAerodynamicField(hx, hy, hz, gy, elapsed, lowerBladeAng, upperBladeAng);
                     const speed = Math.sqrt(flow.vx * flow.vx + flow.vy * flow.vy + flow.vz * flow.vz);
 
-                    if (streamSeeds[s * 4 + 3] > maxAge || hx * hx + hz * hz > 280.0 || hy > 12.0 || speed < 0.25) {
+                    const sRelX = hx - heliFlight.x;
+                    const sRelZ = hz - heliFlight.z;
+                    if (streamSeeds[s * 4 + 3] > maxAge || sRelX * sRelX + sRelZ * sRelZ > 280.0 || hy > heliFlight.y + 12.0 || speed < 0.25) {
                         initStreamline(s);
+                        for (let k = 0; k < STREAM_SEGS; k++) {
+                            const idx = (s * STREAM_SEGS + k) * 3;
+                            const wp = localToWorldHeli(streamHistory[idx], streamHistory[idx + 1], streamHistory[idx + 2]);
+                            streamHistory[idx]     = wp.x;
+                            streamHistory[idx + 1] = wp.y;
+                            streamHistory[idx + 2] = wp.z;
+                        }
                         hx = streamHistory[headIdx];
                         hy = streamHistory[headIdx + 1];
                         hz = streamHistory[headIdx + 2];
@@ -4352,11 +4900,13 @@
                 btn.classList.add('active');
                 statView.textContent = preset.label;
 
+                const offsetPos = preset.pos.clone().add(helicopterRoot.position);
+                const offsetTarget = preset.target.clone().add(helicopterRoot.position);
                 camAnim = {
                     startPos: camera.position.clone(),
-                    endPos: preset.pos.clone(),
+                    endPos: offsetPos,
                     startTarget: controls.target.clone(),
-                    endTarget: preset.target.clone(),
+                    endTarget: offsetTarget,
                     progress: 0
                 };
             });
@@ -4585,6 +5135,16 @@
             txtToggleUi.textContent = isUiHidden ? '顯示介面' : '隱藏介面';
             btnToggleUi.classList.toggle('tech-panel-dark', isUiHidden);
             btnToggleUi.classList.toggle('tech-panel', !isUiHidden);
+
+            if (isUiHidden) {
+                // When entering Flight Control Mode, if on the ground with spinning rotors, initiate gentle takeoff hover
+                if (heliFlight.targetAlt < 0.5 && currentRotorSpeed > 0.3) {
+                    heliFlight.targetAlt = 2.2;
+                }
+            } else {
+                heliFlight.inputs.w = heliFlight.inputs.s = heliFlight.inputs.a = heliFlight.inputs.d = heliFlight.inputs.r = heliFlight.inputs.f = false;
+                document.querySelectorAll('.flight-pad-btn').forEach(b => b.classList.remove('pressed'));
+            }
         }
 
         btnToggleUi.addEventListener('click', (e) => {
@@ -4592,51 +5152,205 @@
             toggleAllUi();
         });
 
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'h' || e.key === 'H') {
-                toggleAllUi();
+        // Keyboard WASD + R/F (Ascend/Descend) + H Shortcut Listeners
+        const padBtnMap = {
+            w: document.getElementById('btn-fly-fwd'),
+            s: document.getElementById('btn-fly-bwd'),
+            a: document.getElementById('btn-fly-left'),
+            d: document.getElementById('btn-fly-right'),
+            r: document.getElementById('btn-fly-up'),
+            f: document.getElementById('btn-fly-down')
+        };
+
+        function setFlightKey(key, pressed) {
+            if (!(key in heliFlight.inputs)) return;
+            heliFlight.inputs[key] = pressed;
+            if (padBtnMap[key]) {
+                padBtnMap[key].classList.toggle('pressed', pressed);
             }
+            // Automatically spool up rotors if user initiates flight while rotors were stopped
+            if (pressed && !rotorActive) {
+                btnToggleRotor.click();
+            }
+            // If user presses W/A/S/D while sitting at 0 altitude, automatically lift off to hover altitude
+            if (pressed && (key === 'w' || key === 's' || key === 'a' || key === 'd') && heliFlight.targetAlt < 0.6) {
+                heliFlight.targetAlt = 2.2;
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 'h') {
+                toggleAllUi();
+                return;
+            }
+            if (!isUiHidden) return;
+            if (k === 'w' || k === 'arrowup') setFlightKey('w', true);
+            if (k === 's' || k === 'arrowdown') setFlightKey('s', true);
+            if (k === 'a' || k === 'arrowleft') setFlightKey('a', true);
+            if (k === 'd' || k === 'arrowright') setFlightKey('d', true);
+            if (k === 'r' || k === 'pageup') setFlightKey('r', true);
+            if (k === 'f' || k === 'pagedown') setFlightKey('f', true);
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 'w' || k === 'arrowup') setFlightKey('w', false);
+            if (k === 's' || k === 'arrowdown') setFlightKey('s', false);
+            if (k === 'a' || k === 'arrowleft') setFlightKey('a', false);
+            if (k === 'd' || k === 'arrowright') setFlightKey('d', false);
+            if (k === 'r' || k === 'pageup') setFlightKey('r', false);
+            if (k === 'f' || k === 'pagedown') setFlightKey('f', false);
+        });
+
+        // Mobile & Touch On-Screen Control Buttons
+        document.querySelectorAll('.flight-pad-btn').forEach(btn => {
+            const key = btn.getAttribute('data-key');
+            const handlePress = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setFlightKey(key, true);
+            };
+            const handleRelease = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setFlightKey(key, false);
+            };
+            btn.addEventListener('pointerdown', handlePress);
+            btn.addEventListener('pointerup', handleRelease);
+            btn.addEventListener('pointerleave', handleRelease);
+            btn.addEventListener('pointercancel', handleRelease);
+            btn.addEventListener('touchstart', handlePress, { passive: false });
+            btn.addEventListener('touchend', handleRelease, { passive: false });
+        });
+
+        // Reset Helicopter Position Button
+        document.getElementById('btn-flight-reset').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const dx = -heliFlight.x;
+            const dy = -heliFlight.y;
+            const dz = -heliFlight.z;
+            heliFlight.x = 0;
+            heliFlight.y = 0;
+            heliFlight.z = 0;
+            heliFlight.vx = 0;
+            heliFlight.vy = 0;
+            heliFlight.vz = 0;
+            heliFlight.yaw = 0;
+            heliFlight.yawRate = 0;
+            heliFlight.pitch = 0;
+            heliFlight.roll = 0;
+            heliFlight.hoverAlt = 0;
+            heliFlight.targetAlt = 0;
+            helicopterRoot.position.set(0, 0, 0);
+            helicopterRoot.rotation.set(0, 0, 0);
+            camera.position.add(new THREE.Vector3(dx, dy, dz));
+            controls.target.set(0, 2.2, 0.2);
+        });
+
+        // Mobile Gyroscope Camera Orientation Control (DeviceOrientationEvent)
+        const btnGyroToggle = document.getElementById('btn-gyro-toggle');
+        const txtGyroState = document.getElementById('txt-gyro-state');
+        const btnGyroCalibrate = document.getElementById('btn-gyro-calibrate');
+
+        function handleDeviceOrientation(e) {
+            if (!heliFlight.gyroEnabled) return;
+            if (e.beta === null || e.gamma === null) return;
+
+            const beta = e.beta;   // Front-to-back tilt [-180, 180]
+            const gamma = e.gamma; // Left-to-right tilt [-90, 90]
+
+            if (!heliFlight.gyroCalibrated) {
+                heliFlight.gyroBaseBeta = beta;
+                heliFlight.gyroBaseGamma = gamma;
+                heliFlight.gyroCalibrated = true;
+            }
+            heliFlight.gyroCurrentBeta = beta;
+            heliFlight.gyroCurrentGamma = gamma;
+        }
+
+        function enableGyroscopeListener() {
+            heliFlight.gyroEnabled = !heliFlight.gyroEnabled;
+            if (heliFlight.gyroEnabled) {
+                heliFlight.gyroCalibrated = false;
+                window.addEventListener('deviceorientation', handleDeviceOrientation, true);
+                txtGyroState.textContent = '陀螺儀視角: 開啟中';
+                btnGyroToggle.classList.replace('text-amber-300', 'text-emerald-300');
+                btnGyroCalibrate.classList.remove('hidden');
+            } else {
+                window.removeEventListener('deviceorientation', handleDeviceOrientation, true);
+                txtGyroState.textContent = '陀螺儀視角: 點擊開啟';
+                btnGyroToggle.classList.replace('text-emerald-300', 'text-amber-300');
+                btnGyroCalibrate.classList.add('hidden');
+            }
+        }
+
+        btnGyroToggle.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                try {
+                    const perm = await DeviceOrientationEvent.requestPermission();
+                    if (perm === 'granted') {
+                        enableGyroscopeListener();
+                    } else {
+                        txtGyroState.textContent = '陀螺儀未授權';
+                    }
+                } catch (err) {
+                    enableGyroscopeListener();
+                }
+            } else {
+                enableGyroscopeListener();
+            }
+        });
+
+        btnGyroCalibrate.addEventListener('click', (e) => {
+            e.stopPropagation();
+            heliFlight.gyroBaseBeta = heliFlight.gyroCurrentBeta;
+            heliFlight.gyroBaseGamma = heliFlight.gyroCurrentGamma;
         });
 
         // Raycaster for Direct 3D Subsystem Selection
         const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
-        let pointerDownPos = { x: 0, y: 0 };
+        const pointer = new THREE.Vector2();
+        let downPos = { x: 0, y: 0 };
 
         renderer.domElement.addEventListener('pointerdown', (e) => {
-            pointerDownPos = { x: e.clientX, y: e.clientY };
+            downPos.x = e.clientX;
+            downPos.y = e.clientY;
         });
 
         renderer.domElement.addEventListener('pointerup', (e) => {
-            const dx = e.clientX - pointerDownPos.x;
-            const dy = e.clientY - pointerDownPos.y;
-            if (Math.hypot(dx, dy) > 6) return;
+            const moveDist = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
+            if (moveDist > 5) return; // Ignore orbit drag gestures
 
-            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-            raycaster.setFromCamera(mouse, camera);
+            pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+            pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(pointer, camera);
 
             const hits = raycaster.intersectObjects(interactiveMeshes, false);
             if (hits.length > 0) {
                 const hitSys = hits[0].object.userData.subsystem;
-                if (hitSys) selectSubsystem(hitSys);
+                if (hitSys) {
+                    selectSubsystem(hitSys);
+                }
             }
         });
 
         // ============================================================================
-        // 8. MAIN RENDER LOOP (ANIMATION, EXPLODED LERP & 3D CALLOUT PROJECTION)
+        // 8. MAIN ANIMATION, KINEMATICS, FLIGHT CONTROL & 2D CALLOUT PROJECTION LOOP
         // ============================================================================
 
         const clock = new THREE.Clock();
 
         function animate() {
             requestAnimationFrame(animate);
+
             const dt = Math.min(clock.getDelta(), 0.05);
             const elapsed = clock.getElapsedTime();
 
             // 1. Smooth Camera Preset Interpolation
             if (camAnim) {
-                camAnim.progress += dt * 2.2;
+                camAnim.progress += dt * 1.8;
                 const t = Math.min(camAnim.progress, 1.0);
                 const ease = 1 - Math.pow(1 - t, 3);
                 camera.position.lerpVectors(camAnim.startPos, camAnim.endPos, ease);
@@ -4645,51 +5359,196 @@
             }
             controls.update();
 
-            // 2. Smooth Exploded View Interpolation
+            // 2. Smooth 16-Subsystem Exploded View Interpolation
             currentExplode += (targetExplode - currentExplode) * Math.min(dt * 7.5, 1.0);
-            if (Math.abs(targetExplode - currentExplode) > 0.0005) {
-                updateExplodeUI(currentExplode);
-            }
 
             subsystems.forEach(sys => {
                 sys.position.copy(sys.userData.explodeVec).multiplyScalar(currentExplode);
             });
 
-            wingPartsToSpread.forEach(wg => {
-                wg.position.x = wg.userData.side * currentExplode * 1.45;
+            // Additional lateral spread for port & starboard stub wings during exploded view
+            wingPartsToSpread.forEach(wingSide => {
+                wingSide.position.x = wingSide.userData.side * currentExplode * 1.45;
             });
 
-            // 3. Coaxial Counter-Rotating Rotors & Enclosed Tail Thruster Kinematics
+            // 3. Coaxial Counter-Rotating Rotors & Enclosed Tail Thruster Kinematics + Motion Blur Transition
             const targetSpeed = rotorActive ? maxRotorThrottle : 0.0;
             currentRotorSpeed += (targetSpeed - currentRotorSpeed) * Math.min(dt * 2.5, 1.0);
 
+            // Smoothly transition solid blades into motion-blurred afterimage trail above 30% RPM
+            const blurFactor = THREE.MathUtils.smoothstep(currentRotorSpeed, 0.28, 0.92);
+            lowerBlurDisc.mat.uniforms.uBlurIntensity.value = blurFactor;
+            upperBlurDisc.mat.uniforms.uBlurIntensity.value = blurFactor;
+            tailBlurDisc.mat.uniforms.uBlurIntensity.value = blurFactor;
+
+            // Fade solid blade opacity slightly at high RPM so it fuses into the shutter-blur trail without strobing
+            const solidBladeOpacity = 1.0 - blurFactor * 0.62;
+            MAT.rotorBladeCarbon.opacity = solidBladeOpacity;
+            MAT.rotorBladeEdge.opacity = solidBladeOpacity;
+
+            allRotorGhostSlices.forEach(({ mat, sliceIdx }) => {
+                mat.opacity = blurFactor * (0.28 / sliceIdx);
+            });
+
             if (currentRotorSpeed > 0.001) {
-                const angularStep = currentRotorSpeed * dt * 22.0;
+                const angularStep = currentRotorSpeed * dt * 24.0;
                 lowerRotorSpinGroup.rotation.y += angularStep;
                 upperRotorSpinGroup.rotation.y -= angularStep;
-                tailFanSpinGroup.rotation.x += angularStep * 2.4;
+                tailFanSpinGroup.rotation.x += angularStep * 2.6;
                 const rpmVal = Math.round(currentRotorSpeed * 320);
-                statRpm.textContent = `${rpmVal} RPM (ACTIVE)`;
+                statRpm.textContent = `${rpmVal} RPM (BLUR TRAIL)`;
             } else {
                 statRpm.textContent = '0 RPM (STATIC)';
             }
+
+            // 3A-2. Interactive Helicopter Flight Physics (WASD + R/F Vertical Climb/Descent + Gear Retraction)
+            const fwdInput = (heliFlight.inputs.w ? 1 : 0) - (heliFlight.inputs.s ? 1 : 0);
+            const sideInput = (heliFlight.inputs.d ? 1 : 0) - (heliFlight.inputs.a ? 1 : 0);
+            const vertInput = (heliFlight.inputs.r ? 1 : 0) - (heliFlight.inputs.f ? 1 : 0);
+
+            if (isUiHidden && currentRotorSpeed > 0.35) {
+                // R (Ascend) / F (Descend) adjusts target altitude between 0m (landed) and 35m
+                if (vertInput !== 0) {
+                    heliFlight.targetAlt = THREE.MathUtils.clamp(heliFlight.targetAlt + vertInput * 6.5 * dt, 0.0, 35.0);
+                }
+            } else if (!isUiHidden && currentExplode > 0.05) {
+                // Return to ground level smoothly when inspecting exploded subsystems
+                heliFlight.targetAlt = 0.0;
+            }
+
+            const bobbing = (heliFlight.targetAlt > 0.25 && currentRotorSpeed > 0.4)
+                ? Math.sin(elapsed * 2.2) * 0.06
+                : 0.0;
+            const desiredAlt = Math.max(0.0, heliFlight.targetAlt + bobbing);
+            heliFlight.hoverAlt += (desiredAlt - heliFlight.hoverAlt) * Math.min(dt * 3.0, 1.0);
+
+            // Automatic Landing Gear Retraction when airborne (hoverAlt > 0.45m) & Extension when landing (and assembled)
+            const shouldRetractGear = (heliFlight.hoverAlt > 0.45 && currentExplode < 0.05) ? 1.0 : 0.0;
+            heliFlight.gearRetract += (shouldRetractGear - heliFlight.gearRetract) * Math.min(dt * 3.2, 1.0);
+
+            // Apply smooth mechanical articulation to Nose Gear, Main Gear & Gear Bay Doors
+            const gr = THREE.MathUtils.smoothstep(heliFlight.gearRetract, 0.0, 1.0);
+            // Nose wheel folds aft/upward into chin bay
+            noseGearRetractPivot.rotation.x = -gr * 1.42;
+            noseGearStrutAssembly.scale.setScalar(1.0 - gr * 0.35);
+            noseGearDoors.forEach(dp => {
+                dp.rotation.z = -dp.userData.side * gr * 1.15;
+            });
+
+            // Port & Starboard main landing gear fold inward & upward into lower hull sponsons
+            mainGearRetractPivots.forEach(rp => {
+                const s = rp.userData.side;
+                rp.rotation.z = -s * gr * 1.28;
+                rp.rotation.x = -gr * 0.32;
+            });
+            mainGearDoorPivots.forEach(dp => {
+                const s = dp.userData.side;
+                dp.rotation.z = s * gr * 0.92;
+            });
+
+            // Hide wheel chocks as soon as the aircraft lifts off or moves
+            const chockVisible = (heliFlight.hoverAlt < 0.08 && Math.hypot(heliFlight.x, heliFlight.z) < 0.25);
+            groundWheelChocks.forEach(ch => {
+                ch.visible = chockVisible;
+            });
+
+            // Steering yaw + lateral strafe & forward/backward thrust (only move horizontally when slightly off ground or spooling)
+            const airborneFactor = THREE.MathUtils.clamp(heliFlight.hoverAlt / 0.35, 0.15, 1.0);
+            const targetYawRate = -sideInput * 1.15 * airborneFactor;
+            heliFlight.yawRate += (targetYawRate - heliFlight.yawRate) * Math.min(dt * 5.0, 1.0);
+            heliFlight.yaw += heliFlight.yawRate * dt;
+
+            const forwardX = Math.sin(heliFlight.yaw);
+            const forwardZ = Math.cos(heliFlight.yaw);
+            const rightX = Math.cos(heliFlight.yaw);
+            const rightZ = -Math.sin(heliFlight.yaw);
+
+            const maxSpeed = 14.5 * airborneFactor;
+            const targetVx = (forwardX * fwdInput + rightX * sideInput * 0.65) * maxSpeed;
+            const targetVz = (forwardZ * fwdInput + rightZ * sideInput * 0.65) * maxSpeed;
+
+            heliFlight.vx += (targetVx - heliFlight.vx) * Math.min(dt * 3.2, 1.0);
+            heliFlight.vz += (targetVz - heliFlight.vz) * Math.min(dt * 3.2, 1.0);
+
+            const prevX = heliFlight.x;
+            const prevY = heliFlight.y;
+            const prevZ = heliFlight.z;
+
+            // Clamp within desert terrain arena (-85m to +85m)
+            heliFlight.x = THREE.MathUtils.clamp(heliFlight.x + heliFlight.vx * dt, -85, 85);
+            heliFlight.z = THREE.MathUtils.clamp(heliFlight.z + heliFlight.vz * dt, -85, 85);
+
+            const terrainUnderHeli = isDesertMode ? getDesertHeight(heliFlight.x, heliFlight.z) : 0.0;
+            heliFlight.y = terrainUnderHeli + heliFlight.hoverAlt;
+
+            // Realistic cyclic pitch & bank roll attitude response
+            const targetPitch = fwdInput * 0.16 * airborneFactor;
+            const targetRoll = -sideInput * 0.22 * airborneFactor;
+            heliFlight.pitch += (targetPitch - heliFlight.pitch) * Math.min(dt * 5.5, 1.0);
+            heliFlight.roll += (targetRoll - heliFlight.roll) * Math.min(dt * 5.5, 1.0);
+
+            helicopterRoot.position.set(heliFlight.x, heliFlight.y, heliFlight.z);
+            helicopterRoot.rotation.order = 'YXZ';
+            helicopterRoot.rotation.set(heliFlight.pitch, heliFlight.yaw, heliFlight.roll);
+
+            // Keep Camera, OrbitControls Target, Shadow Frustum & Ground Scouring Pad tracking the helicopter
+            const deltaMove = new THREE.Vector3(heliFlight.x - prevX, heliFlight.y - prevY, heliFlight.z - prevZ);
+            if (deltaMove.lengthSq() > 0.000001) {
+                camera.position.add(deltaMove);
+                controls.target.add(deltaMove);
+            }
+
+            // Apply Mobile Gyroscope Camera Orbit if enabled in Hidden UI mode
+            if (isUiHidden && heliFlight.gyroEnabled && heliFlight.gyroCalibrated) {
+                const dGamma = THREE.MathUtils.degToRad(THREE.MathUtils.clamp(heliFlight.gyroCurrentGamma - heliFlight.gyroBaseGamma, -45, 45));
+                const dBeta = THREE.MathUtils.degToRad(THREE.MathUtils.clamp(heliFlight.gyroCurrentBeta - heliFlight.gyroBaseBeta, -35, 35));
+
+                const offset = camera.position.clone().sub(controls.target);
+                const spherical = new THREE.Spherical().setFromVector3(offset);
+                spherical.theta -= dGamma * dt * 1.8;
+                spherical.phi = THREE.MathUtils.clamp(spherical.phi + dBeta * dt * 1.2, 0.25, Math.PI * 0.48);
+                offset.setFromSpherical(spherical);
+                camera.position.copy(controls.target).add(offset);
+            }
+
+            // Update Flight HUD Telemetry readout
+            if (isUiHidden) {
+                const groundSpdKt = Math.round(Math.hypot(heliFlight.vx, heliFlight.vz) * 3.8);
+                const altFt = Math.round(heliFlight.hoverAlt * 10);
+                const gearStateStr = heliFlight.gearRetract > 0.85 ? 'UP' : (heliFlight.gearRetract < 0.15 ? 'DOWN' : 'TRANSIT');
+                const hudEl = document.getElementById('flight-hud-telemetry');
+                if (hudEl) {
+                    hudEl.textContent = `SPD: ${groundSpdKt} KT | ALT: ${altFt} FT | GEAR: ${gearStateStr}`;
+                }
+            }
+
+            // Move directional shadow light and ground contact pads with the helicopter
+            keyLight.position.set(heliFlight.x + 14, heliFlight.y + 24, heliFlight.z + 16);
+            keyLight.target.position.set(heliFlight.x, heliFlight.y, heliFlight.z);
+            keyLight.target.updateMatrixWorld();
+
+            const groundEffectAtten = Math.exp(-heliFlight.hoverAlt * 0.18);
+            desertAoPad.position.set(heliFlight.x, terrainUnderHeli + 0.008, heliFlight.z - 0.5);
+            desertAoPad.material.opacity = groundEffectAtten;
+            aoPad.position.set(heliFlight.x, 0.005, heliFlight.z - 0.5);
 
             // 3B. Update Per-Grain Aerodynamic Sand Physics & Scouring Ring in Desert Mode
             if (isDesertMode) {
                 sandShaderMat.uniforms.uTime.value = elapsed;
                 updateAerodynamicSandPhysics(dt, elapsed);
 
-                // Animate ground scouring wave ring under rotor downwash
-                const downwashFactor = currentRotorSpeed * Math.max(0.15, (collectivePitchDeg + 5.5) / 11.5) * aeroForceMultiplier;
+                // Animate ground scouring wave ring directly under rotor downwash (attenuates with altitude)
+                const downwashFactor = currentRotorSpeed * Math.max(0.15, (collectivePitchDeg + 5.5) / 11.5) * aeroForceMultiplier * groundEffectAtten;
+                scourRingMesh.position.set(heliFlight.x, terrainUnderHeli + 0.02, heliFlight.z - 0.02);
                 scourRingMesh.rotation.z = elapsed * 0.45 * downwashFactor;
                 const pulseScale = 1.0 + Math.sin(elapsed * 6.0) * 0.03 * Math.min(1.5, downwashFactor);
                 scourRingMesh.scale.set(pulseScale, pulseScale, 1.0);
-                scourRingMat.opacity = Math.min(0.88, 0.15 + downwashFactor * 0.55);
+                scourRingMat.opacity = Math.min(0.82, (0.12 + downwashFactor * 0.48) * groundEffectAtten);
 
                 if (statSand) {
                     statSand.textContent = downwashFactor > 0.35
-                        ? '36,000 GRAINS (BROWNOUT VORTEX)'
-                        : (ambientWindStrength > 0.15 ? '36,000 GRAINS (WIND DRIFT)' : '36,000 GRAINS (SETTLED)');
+                        ? '100,000 GRAINS (BROWNOUT VORTEX)'
+                        : (ambientWindStrength > 0.15 ? '100,000 GRAINS (WIND DRIFT)' : '100,000 GRAINS (SETTLED)');
                 }
             }
 

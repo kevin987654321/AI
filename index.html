@@ -9,7 +9,6 @@
     <!-- Three.js r128 Core & OrbitControls -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
 
     <style>
         * {
@@ -217,17 +216,25 @@
         <span id="txt-toggle-ui">隱藏介面</span>
     </button>
 
-    <!-- Hidden-UI Interactive Flight Control Overlay (WASD + R/F + Subtle Mobile Touch Pads + Gyroscope View) -->
+    <!-- Hidden-UI Interactive Flight Control Overlay (WASD + R/F + Weapons + Subtle Mobile Touch Pads + Gyroscope View) -->
     <div id="flight-controls-overlay" class="fixed inset-0">
-        <!-- Top-Left Minimalist Flight Telemetry & Gyroscope Control Bar -->
+        <!-- Top-Left Minimalist Flight Telemetry, Weapons & Gyroscope Control Bar -->
         <div class="fixed top-3 left-3 md:top-4 md:left-6 flex flex-wrap items-center gap-2 pointer-events-auto">
-            <div class="bg-slate-950/45 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-xl flex items-center gap-2.5 text-xs mono">
+            <div class="bg-slate-950/55 backdrop-blur-md border border-white/15 px-3 py-1.5 rounded-xl flex items-center gap-2.5 text-xs mono">
                 <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <div>
-                    <div class="text-[9px] text-sky-400/90 font-bold tracking-wider">FLIGHT MODE // WASD 移動 · R/F 升降</div>
-                    <div id="flight-hud-telemetry" class="text-[11px] text-slate-200/90 font-semibold">SPD: 0 KT | ALT: 0 FT | GEAR: DOWN</div>
+                    <div class="text-[9px] text-sky-400/90 font-bold tracking-wider">FLIGHT &amp; COMBAT // WASD 移動 · R/F 升降 · SPACE 機砲 · G 導彈</div>
+                    <div id="flight-hud-telemetry" class="text-[11px] text-slate-200/95 font-semibold">STATE: IDLE | SPD: 0 KT | ALT: 0 FT | GEAR: DOWN | MSL: 4/4</div>
                 </div>
             </div>
+
+            <button id="btn-hud-gun" class="bg-rose-950/65 hover:bg-rose-600/80 active:scale-95 backdrop-blur-md border border-rose-400/30 px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-rose-200 transition">
+                20mm 機砲 (Space)
+            </button>
+
+            <button id="btn-hud-missile" class="bg-amber-950/65 hover:bg-amber-600/80 active:scale-95 backdrop-blur-md border border-amber-400/30 px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-amber-200 transition">
+                發射導彈 (G) [<span id="hud-msl-count">4</span>]
+            </button>
 
             <button id="btn-gyro-toggle" class="touch-only-controls bg-slate-950/45 backdrop-blur-md border border-white/15 px-2.5 py-1.5 rounded-xl items-center gap-1.5 text-[11px] font-medium text-amber-300/90 hover:bg-sky-600/40 transition">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -241,22 +248,32 @@
             </button>
 
             <button id="btn-flight-reset" class="bg-slate-950/45 backdrop-blur-md border border-white/15 px-2.5 py-1.5 rounded-xl text-[11px] font-medium text-slate-300/80 hover:text-white transition">
-                歸位
+                返航停機坪
             </button>
         </div>
 
-        <!-- Left Side of Screen (Mobile/Touch Only): Minimalist Left / Right Control Buttons -->
-        <div class="touch-only-controls fixed bottom-5 left-4 flex items-center gap-2.5 pointer-events-auto">
-            <button id="btn-fly-left" data-key="a" aria-label="Left" class="flight-pad-btn w-11 h-11 rounded-full flex items-center justify-center">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                </svg>
-            </button>
-            <button id="btn-fly-right" data-key="d" aria-label="Right" class="flight-pad-btn w-11 h-11 rounded-full flex items-center justify-center">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
-            </button>
+        <!-- Left Side of Screen (Mobile/Touch Only): Minimalist Left / Right + Combat Trigger Buttons -->
+        <div class="touch-only-controls fixed bottom-5 left-4 flex flex-col items-start gap-2.5 pointer-events-auto">
+            <div class="flex items-center gap-2">
+                <button id="btn-touch-gun" aria-label="Fire Cannon" class="flight-pad-btn w-10 h-10 rounded-full flex items-center justify-center border-rose-400/40 text-rose-300 font-bold text-[10px] mono">
+                    GUN
+                </button>
+                <button id="btn-touch-msl" aria-label="Launch Missile" class="flight-pad-btn w-10 h-10 rounded-full flex items-center justify-center border-amber-400/40 text-amber-300 font-bold text-[10px] mono">
+                    MSL
+                </button>
+            </div>
+            <div class="flex items-center gap-2.5">
+                <button id="btn-fly-left" data-key="a" aria-label="Left" class="flight-pad-btn w-11 h-11 rounded-full flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+                <button id="btn-fly-right" data-key="d" aria-label="Right" class="flight-pad-btn w-11 h-11 rounded-full flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </button>
+            </div>
         </div>
 
         <!-- Right Side of Screen (Mobile/Touch Only): Minimalist Altitude (R/F) & Forward/Backward (W/S) -->
@@ -298,10 +315,10 @@
             <div>
                 <div class="flex items-center gap-2">
                     <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-slate-900 text-sky-400 mono">CLASSIFIED // XH-99</span>
-                    <span class="text-xs font-semibold text-slate-500 hidden sm:inline mono">COMPOUND STEALTH ROTORCRAFT</span>
+                    <span class="text-xs font-semibold text-slate-500 hidden sm:inline mono">SANDSTONE CANYON &amp; HELIPAD OPS</span>
                 </div>
                 <h1 class="text-sm md:text-base font-extrabold tracking-tight text-slate-900">
-                    FUTURE HELICOPTER XH-99 <span class="font-normal text-slate-500 text-xs hidden md:inline">// 3D 寫實工程建模與荒漠氣流場系統</span>
+                    FUTURE HELICOPTER XH-99 <span class="font-normal text-slate-500 text-xs hidden md:inline">// 砂岩山峽谷停機坪 · 實彈武裝與四階氣流地形吹蝕系統</span>
                 </h1>
             </div>
         </div>
@@ -309,13 +326,13 @@
         <!-- Real-time Telemetry Badges -->
         <div class="tech-panel px-3.5 py-2 rounded-xl hidden xl:flex items-center gap-5 pointer-events-auto text-xs mono">
             <div>
-                <span class="text-slate-400 block text-[10px]">COAXIAL ROTOR</span>
-                <span id="stat-rpm" class="font-bold text-emerald-600">320 RPM (ACTIVE)</span>
+                <span class="text-slate-400 block text-[10px]">ROTOR &amp; FLIGHT STATE</span>
+                <span id="stat-rpm" class="font-bold text-emerald-600">AUTO // 186 RPM (IDLE)</span>
             </div>
             <div class="h-6 w-px bg-slate-200"></div>
             <div>
-                <span class="text-slate-400 block text-[10px]">AERO SAND GRAINS</span>
-                <span id="stat-sand" class="font-bold text-amber-600">100,000 ACTIVE (BROWNOUT)</span>
+                <span class="text-slate-400 block text-[10px]">AIRFLOW &amp; SAND BED</span>
+                <span id="stat-sand" class="font-bold text-amber-600">4-TIER // DEFORM ACTIVE</span>
             </div>
             <div class="h-6 w-px bg-slate-200"></div>
             <div>
@@ -331,32 +348,58 @@
     </header>
 
     <!-- Right Engineering Control Deck -->
-    <aside class="ui-collapsible fixed top-20 right-3 md:right-6 z-20 w-72 md:w-80 max-h-[calc(100vh-170px)] overflow-y-auto tech-panel rounded-2xl p-4 flex flex-col gap-4 pointer-events-auto">
+    <aside class="ui-collapsible fixed top-20 right-3 md:right-6 z-20 w-72 md:w-84 max-h-[calc(100vh-170px)] overflow-y-auto tech-panel rounded-2xl p-4 flex flex-col gap-4 pointer-events-auto">
         
-        <!-- Section 0: Desert Sandstorm & Per-Grain Aerodynamics -->
+        <!-- Section 0: Sandstone Mountain Canyon, 4-Tier Airflow & Dynamic Sand Deformation -->
         <div class="border-b border-slate-200/80 pb-3.5 space-y-2.5">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
-                    <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-800">荒漠沙暴與氣流物理場 (Aero Sand)</h2>
+                    <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-800">砂岩山峽谷與四階氣流沙地變形</h2>
                 </div>
-                <span id="env-mode-badge" class="text-[10px] font-bold mono px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">DESERT</span>
+                <span id="env-mode-badge" class="text-[10px] font-bold mono px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">CANYON PAD</span>
             </div>
 
             <!-- Environment Mode Switch Button -->
             <div class="grid grid-cols-2 gap-1.5 bg-slate-200/80 p-1 rounded-xl">
                 <button id="btn-env-desert" class="py-1.5 px-2 rounded-lg font-bold text-[11px] bg-amber-500 text-slate-950 shadow-sm transition">
-                    荒漠沙暴氣流場
+                    砂岩山停機坪沙暴
                 </button>
                 <button id="btn-env-studio" class="py-1.5 px-2 rounded-lg font-bold text-[11px] text-slate-600 hover:text-slate-900 transition">
                     純白工程格線棚
                 </button>
             </div>
 
+            <!-- 4-Tier Airflow Intensity Live Meter -->
+            <div class="bg-slate-900/95 text-white p-2.5 rounded-xl space-y-1.5">
+                <div class="flex items-center justify-between text-[10px] mono">
+                    <span class="text-slate-300 font-bold">4-TIER AIRFLOW INTENSITY</span>
+                    <span id="val-airflow-tier" class="text-amber-400 font-bold">TIER 2 // MED INFLOW</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-slate-800 overflow-hidden flex">
+                    <div id="bar-tier-low" class="h-full bg-amber-400 transition-all duration-150" style="width: 35%"></div>
+                    <div id="bar-tier-med" class="h-full bg-sky-400 transition-all duration-150" style="width: 30%"></div>
+                    <div id="bar-tier-high" class="h-full bg-emerald-400 transition-all duration-150" style="width: 25%"></div>
+                    <div id="bar-tier-ext" class="h-full bg-orange-500 transition-all duration-150" style="width: 10%"></div>
+                </div>
+                <div class="grid grid-cols-4 gap-1 text-[9px] mono text-slate-300 pt-0.5">
+                    <span class="flex items-center gap-1"><i class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></i>微風蠕移</span>
+                    <span class="flex items-center gap-1"><i class="w-1.5 h-1.5 rounded-full bg-sky-400 inline-block"></i>中度入流</span>
+                    <span class="flex items-center gap-1"><i class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></i>強下洗渦</span>
+                    <span class="flex items-center gap-1"><i class="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block"></i>極限吹蝕</span>
+                </div>
+                <div class="flex items-center justify-between pt-1 border-t border-slate-700/80 text-[10px] mono">
+                    <span class="text-slate-400">沙地吹蝕坑深: <strong id="val-scour-depth" class="text-amber-300">0.00 m</strong></span>
+                    <button id="btn-reset-sand" class="px-2 py-0.5 rounded bg-slate-700 hover:bg-sky-600 text-slate-200 hover:text-white transition font-semibold">
+                        撫平沙地
+                    </button>
+                </div>
+            </div>
+
             <!-- Ambient Wind Velocity Slider -->
             <div>
                 <div class="flex justify-between text-[11px] text-slate-600 font-medium mb-1">
-                    <span>環境沙漠風速與陣風亂流 (Ambient Wind)</span>
+                    <span>環境峽谷風速與陣風亂流 (Ambient Wind)</span>
                     <span id="val-wind" class="mono font-bold text-amber-700">28 KT</span>
                 </div>
                 <input id="slider-wind" type="range" min="0" max="100" value="55" class="tech-slider">
@@ -365,7 +408,7 @@
             <!-- Aerodynamic Downwash & Saltation Force Slider -->
             <div>
                 <div class="flex justify-between text-[11px] text-slate-600 font-medium mb-1">
-                    <span>機體氣流揚沙耦合強度 (Aero Force)</span>
+                    <span>機體氣流揚沙與沙地吹蝕強度 (Aero Force)</span>
                     <span id="val-aero-force" class="mono font-bold text-sky-700">125%</span>
                 </div>
                 <input id="slider-aero-force" type="range" min="20" max="200" value="125" class="tech-slider">
@@ -374,7 +417,7 @@
             <!-- Wind Direction Slider -->
             <div>
                 <div class="flex justify-between text-[11px] text-slate-600 font-medium mb-1">
-                    <span>沙漠環境風向角 (Wind Azimuth)</span>
+                    <span>峽谷環境風向角 (Wind Azimuth)</span>
                     <span id="val-wind-dir" class="mono font-bold text-slate-700">045° NE</span>
                 </div>
                 <input id="slider-wind-dir" type="range" min="0" max="360" value="45" class="tech-slider">
@@ -382,11 +425,38 @@
 
             <!-- 3D Aerodynamic Streamlines Toggle -->
             <div class="flex items-center justify-between pt-0.5">
-                <span class="text-xs font-semibold text-slate-700">顯示 3D 氣流流線軌跡 (Streamlines)</span>
+                <span class="text-xs font-semibold text-slate-700">顯示四階氣流流線軌跡 (Streamlines)</span>
                 <label class="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" id="chk-streamlines" class="sr-only peer" checked>
                     <div class="w-9 h-5 bg-slate-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
                 </label>
+            </div>
+        </div>
+
+        <!-- Section 0B: Tactical Ordnance & Live-Fire Recoil System -->
+        <div class="border-b border-slate-200/80 pb-3.5 space-y-2.5">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+                    <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-800">懸掛導彈與機砲實彈射擊 (Ordnance)</h2>
+                </div>
+                <span id="ordnance-badge" class="text-[10px] font-bold mono px-2 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-300">ARMED // 4 MSL</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <button id="btn-fire-gun" class="py-2 px-2.5 rounded-xl font-bold text-xs bg-slate-900 text-rose-400 hover:bg-rose-600 hover:text-white active:scale-95 transition flex items-center justify-center gap-1.5 shadow-sm border border-rose-500/30">
+                    <span>20mm 機砲 (Space)</span>
+                </button>
+                <button id="btn-fire-missile" class="py-2 px-2.5 rounded-xl font-bold text-xs bg-amber-500 text-slate-950 hover:bg-amber-400 active:scale-95 transition flex items-center justify-center gap-1.5 shadow-sm">
+                    <span id="txt-fire-missile">發射導彈 (G) [4]</span>
+                </button>
+            </div>
+
+            <div class="flex items-center justify-between text-[11px] text-slate-600">
+                <span>沉浸式射擊／氣流震動感 (Camera Shake)</span>
+                <button id="btn-rearm" class="text-[10px] font-bold mono px-2 py-0.5 rounded bg-slate-200 hover:bg-slate-800 hover:text-white transition">
+                    補滿彈藥
+                </button>
             </div>
         </div>
 
@@ -405,7 +475,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
                 </svg>
-                <span id="btn-explode-text">一鍵展開全機 16 個子系統</span>
+                <span id="btn-explode-text">一鍵展開全機 17 個子系統</span>
             </button>
 
             <!-- Continuous Slider -->
@@ -427,21 +497,31 @@
             </div>
         </div>
 
-        <!-- Section 2: Rotor & Thruster Kinematics -->
+        <!-- Section 2: Rotor & Thruster Kinematics (With AUTO Mode) -->
         <div class="border-b border-slate-200/80 pb-3.5">
-            <div class="flex items-center justify-between mb-2.5">
+            <div class="flex items-center justify-between mb-2">
                 <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-800">同軸旋翼與涵道尾槳動力</h2>
-                <span id="rotor-state-badge" class="text-[10px] font-bold mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">SPINNING</span>
+                <span id="rotor-state-badge" class="text-[10px] font-bold mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">AUTO // IDLE</span>
+            </div>
+
+            <!-- 3-Way Rotor Control Mode Selector: AUTO / MANUAL / OFF -->
+            <div class="grid grid-cols-3 gap-1 bg-slate-200/90 p-1 rounded-xl mb-2.5">
+                <button id="btn-rotor-auto" class="py-1.5 px-2 rounded-lg font-bold text-[11px] bg-emerald-600 text-white shadow-sm transition">
+                    自動 (AUTO)
+                </button>
+                <button id="btn-rotor-manual" class="py-1.5 px-2 rounded-lg font-bold text-[11px] text-slate-700 hover:text-slate-900 transition">
+                    手動恆定
+                </button>
+                <button id="btn-rotor-off" class="py-1.5 px-2 rounded-lg font-bold text-[11px] text-slate-700 hover:text-rose-600 transition">
+                    關車 (OFF)
+                </button>
             </div>
 
             <div class="grid grid-cols-2 gap-2 mb-3">
-                <button id="btn-toggle-rotor" class="py-2 px-3 rounded-xl font-bold text-xs bg-rose-600 text-white hover:bg-rose-500 transition flex items-center justify-center gap-1.5 shadow-sm">
-                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
-                    </svg>
-                    <span id="btn-rotor-text">停止旋翼運轉</span>
+                <button id="btn-auto-takeoff" class="py-2 px-2.5 rounded-xl font-bold text-xs bg-slate-900 text-sky-400 hover:bg-sky-600 hover:text-white transition flex items-center justify-center gap-1 shadow-sm">
+                    <span id="txt-auto-takeoff">一鍵起飛懸停</span>
                 </button>
-                <button id="btn-toggle-flir" class="py-2 px-3 rounded-xl font-bold text-xs bg-sky-600 text-white border border-slate-300 transition flex items-center justify-center gap-1.5">
+                <button id="btn-toggle-flir" class="py-2 px-2.5 rounded-xl font-bold text-xs bg-sky-600 text-white border border-slate-300 transition flex items-center justify-center gap-1">
                     <span>FLIR 轉塔掃描</span>
                 </button>
             </div>
@@ -451,16 +531,16 @@
                 <div>
                     <div class="flex justify-between text-[11px] text-slate-600 font-medium mb-1">
                         <span>旋翼轉速 (RPM Throttle)</span>
-                        <span id="val-rpm-pct" class="mono font-bold">100%</span>
+                        <span id="val-rpm-pct" class="mono font-bold text-emerald-700">58% (186 RPM)</span>
                     </div>
-                    <input id="slider-rpm" type="range" min="10" max="100" value="100" class="tech-slider">
+                    <input id="slider-rpm" type="range" min="10" max="105" value="58" class="tech-slider">
                 </div>
                 <div>
                     <div class="flex justify-between text-[11px] text-slate-600 font-medium mb-1">
                         <span>十字轉盤總距角 (Collective Pitch)</span>
-                        <span id="val-pitch" class="mono font-bold">+6.0°</span>
+                        <span id="val-pitch" class="mono font-bold text-sky-700">+1.5°</span>
                     </div>
-                    <input id="slider-pitch" type="range" min="-4" max="14" step="0.5" value="6" class="tech-slider">
+                    <input id="slider-pitch" type="range" min="-4" max="14" step="0.2" value="1.5" class="tech-slider">
                 </div>
             </div>
         </div>
@@ -512,11 +592,11 @@
     <div class="ui-collapsible fixed bottom-20 left-3 md:left-6 z-20 hidden sm:flex flex-col gap-1.5 tech-panel px-3.5 py-2.5 rounded-xl text-[11px] text-slate-600 pointer-events-none">
         <div class="font-bold text-slate-900 flex items-center gap-1.5">
             <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-            互動操作指南 (Interactive Controls)
+            互動操作與實彈飛行指南 (Interactive Controls)
         </div>
-        <div>• <b>左鍵拖曳</b>：360° 自由旋轉檢視　• <b>右鍵拖曳</b>：平移視角</div>
-        <div>• <b>滾輪縮放</b>：微距檢視凹槽雙座艙、三聯裝 MFD、滾珠軸承與碟煞輪組</div>
-        <div>• <b>右上角小眼睛 (或按 H)</b>：一鍵隱藏/顯示所有 UI 面板</div>
+        <div>• <b>左鍵拖曳</b>：360° 旋轉　• <b>右鍵拖曳</b>：平移　• <b>滾輪</b>：微距縮放</div>
+        <div>• <b>實彈武器</b>：按住 <b>Space / J</b> 射擊 20mm 機砲　• 按 <b>G / K</b> 發射導引飛彈</div>
+        <div>• <b>飛行控制 (按 H 隱藏介面或直接操作)</b>：<b>WASD</b> 推進轉向 · <b>R / F</b> 垂直起降</div>
     </div>
 
     <!-- Bottom Camera Presets Bar (Matching Reference Sheet) -->
@@ -1049,59 +1129,11 @@
         renderer.physicallyCorrectLights = true;
         container.appendChild(renderer.domElement);
 
-        let studioEnvTexture = createStudioEnvironment(renderer);
-        let desertEnvTexture = createDesertEnvironment(renderer);
+        const studioEnvTexture = createStudioEnvironment(renderer);
+        const desertEnvTexture = createDesertEnvironment(renderer);
         scene.environment = desertEnvTexture;
         scene.background = new THREE.Color(0xdfc4a4);
         scene.fog = new THREE.FogExp2(0xd8b894, 0.0155);
-
-        // ------------------------------------------------------------------
-        // Real HDRI image-based lighting (loaded at runtime, falls back to the
-        // procedural environments above if every URL fails / offline).
-        // ------------------------------------------------------------------
-        const HDRI_BASE_TJS = 'https://threejs.org/examples/textures/equirectangular/';
-        const HDRI_BASE_PH = 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/';
-        const HDRI_CANDIDATES = {
-            desert: [
-                HDRI_BASE_PH + 'kloppenheim_06_puresky_1k.hdr',
-                HDRI_BASE_TJS + 'spruit_sunrise_1k.hdr',
-                HDRI_BASE_TJS + 'blouberg_sunrise_2_1k.hdr'
-            ],
-            studio: [
-                HDRI_BASE_PH + 'photo_studio_loft_hall_1k.hdr',
-                HDRI_BASE_TJS + 'royal_esplanade_1k.hdr',
-                HDRI_BASE_TJS + 'venice_sunset_1k.hdr'
-            ]
-        };
-
-        function loadHdriWithFallback(urls, onLoaded) {
-            if (typeof THREE.RGBELoader !== 'function') return;
-            let idx = 0;
-            const loader = new THREE.RGBELoader();
-            const tryNext = () => {
-                if (idx >= urls.length) return; // keep procedural fallback
-                const url = urls[idx++];
-                loader.load(url, (tex) => {
-                    tex.mapping = THREE.EquirectangularReflectionMapping;
-                    const pmrem = new THREE.PMREMGenerator(renderer);
-                    pmrem.compileEquirectangularShader();
-                    const envRT = pmrem.fromEquirectangular(tex);
-                    tex.dispose();
-                    pmrem.dispose();
-                    onLoaded(envRT.texture, url);
-                }, undefined, tryNext);
-            };
-            tryNext();
-        }
-
-        loadHdriWithFallback(HDRI_CANDIDATES.desert, (envTex) => {
-            desertEnvTexture = envTex;
-            if (typeof isDesertMode === 'undefined' || isDesertMode) scene.environment = envTex;
-        });
-        loadHdriWithFallback(HDRI_CANDIDATES.studio, (envTex) => {
-            studioEnvTexture = envTex;
-            if (typeof isDesertMode !== 'undefined' && !isDesertMode) scene.environment = envTex;
-        });
 
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
@@ -1239,41 +1271,107 @@
         desertGroup.visible = true;
         scene.add(desertGroup);
 
+        const terrainSize = 220;
+        const terrainSegs = 240;
+        const gridSide = terrainSegs + 1;
+        const sandDeformGrid = new Float32Array(gridSide * gridSide);
+        let maxSandScourDepth = 0.0;
+
         /**
-         * High-precision multi-octave analytical desert elevation function with asymmetric
-         * barchan dune ridges, wind-carved gullies, and a compacted flat helipad zone
-         * under the landing gear (r < 3.2m) so all 100,000 sand grains query exact ground height in O(1) time.
+         * Base analytical terrain height combining:
+         * 1. Flat compacted Tactical Helipad plateau at origin (r < 7.8m) with sloped blast embankment
+         * 2. Winding desert floor dunes & eolian ripples in the canyon corridor
+         * 3. Towering Stratified Sandstone Mountains, Mesas & Buttes (層狀砂岩山脈與方山台地) surrounding the arena
          */
-        function getDesertHeight(x, z) {
+        function getBaseDesertHeight(x, z) {
             const r2 = x * x + z * z;
             const r = Math.sqrt(r2);
-            const padMask = Math.min(1.0, Math.max(0.0, (r - 2.8) / 4.8));
-            const smoothMask = padMask * padMask * (3.0 - 2.0 * padMask);
 
-            // Primary wind-aligned barchan dune waves with sharp asymmetrical crests
+            // Helipad flat zone mask (0 inside r < 7.8m, smoothly transitions to 1 at r = 15.5m)
+            const padMask = Math.min(1.0, Math.max(0.0, (r - 7.8) / 7.7));
+            const smoothPadMask = padMask * padMask * (3.0 - 2.0 * padMask);
+
+            // 1. Valley Floor Barchan Dunes & Eolian Ripples
             const u = x * 0.065 + z * 0.055;
             const v = x * 0.045 - z * 0.075;
             const duneWave1 = Math.sin(u + Math.sin(v * 1.4) * 0.65);
-            const sharpCrest1 = (duneWave1 + 0.35 * duneWave1 * duneWave1) * 0.95;
-
-            // Secondary cross-swept dune ridges
+            const sharpCrest1 = (duneWave1 + 0.35 * duneWave1 * duneWave1) * 0.85;
             const duneWave2 = Math.cos(v * 1.35 + Math.cos(u * 0.9) * 0.55);
-            const sharpCrest2 = (duneWave2 + 0.28 * duneWave2 * duneWave2) * 0.68;
-
-            // Medium wind-drifted hummocks & eolian sand sheets
-            const medUndulation = Math.sin(x * 0.19 - z * 0.16 + 0.8) * 0.22
+            const sharpCrest2 = (duneWave2 + 0.28 * duneWave2 * duneWave2) * 0.58;
+            const medUndulation = Math.sin(x * 0.19 - z * 0.16 + 0.8) * 0.20
                                 + Math.cos(x * 0.34 + z * 0.29) * 0.09;
-
-            // High-frequency wind-blown ripple relief
             const ripplePhase = x * 2.4 + z * 1.9 + Math.sin(x * 0.7 - z * 0.6) * 1.2;
-            const microRipple = Math.pow(0.5 + 0.5 * Math.sin(ripplePhase), 1.6) * 0.024;
+            const microRipple = Math.pow(0.5 + 0.5 * Math.sin(ripplePhase), 1.6) * 0.022;
+            const duneFloor = (sharpCrest1 + sharpCrest2 + medUndulation + microRipple) * smoothPadMask;
 
-            // Subtle rotor downwash scour depression right under the aircraft
-            const scourBowl = -0.028 * Math.exp(-r2 / 24.0);
-            return (sharpCrest1 + sharpCrest2 + medUndulation + microRipple) * smoothMask + scourBowl * (1.0 - smoothMask * 0.5);
+            // 2. Stratified Sandstone Mountain Canyon & Stepped Mesas (r > 22m)
+            const canyonMask = Math.min(1.0, Math.max(0.0, (r - 22.0) / 18.0));
+            const smoothCanyon = canyonMask * canyonMask * (3.0 - 2.0 * canyonMask);
+
+            // Carve a navigable flight canyon corridor along the NE-SW / N-S axis while raising massive sandstone mountains on flanks
+            const angle = Math.atan2(z, x);
+            const corridor1 = Math.pow(Math.sin(angle * 2.0 - 0.35), 2.0);
+            const corridor2 = 0.5 + 0.5 * Math.cos(angle * 3.0 + 1.1);
+            const ridgeNoise = 0.55 + 0.45 * Math.sin(x * 0.052 + Math.cos(z * 0.048) * 1.6)
+                                    + 0.35 * Math.cos(z * 0.061 - Math.sin(x * 0.045) * 1.4);
+
+            // Discrete standalone Sandstone Buttes / Pillars at iconic canyon locations
+            const butte1 = Math.exp(-((x - 36) * (x - 36) + (z + 28) * (z + 28)) / 190.0) * 16.5;
+            const butte2 = Math.exp(-((x + 42) * (x + 42) + (z - 26) * (z - 26)) / 220.0) * 19.0;
+            const butte3 = Math.exp(-((x + 34) * (x + 34) + (z + 38) * (z + 38)) / 240.0) * 17.5;
+            const butte4 = Math.exp(-((x - 44) * (x - 44) + (z - 34) * (z - 34)) / 210.0) * 15.5;
+
+            const rawMountain = (smoothCanyon * (corridor1 * 0.72 + corridor2 * 0.48) * ridgeNoise * 16.0)
+                              + (butte1 + butte2 + butte3 + butte4) * smoothPadMask;
+
+            // Apply Geological Sedimentary Terracing (Flat Mesa Tops & Stepped Sandstone Cliffs)
+            let terracedMountain = 0.0;
+            if (rawMountain > 0.4) {
+                const clampedMesa = Math.min(rawMountain, 23.5);
+                const strataStep = 2.6;
+                const sVal = clampedMesa / strataStep;
+                const iPart = Math.floor(sVal);
+                const fPart = sVal - iPart;
+                // Steep cliff face + flat terrace shelf
+                const stepped = iPart + Math.pow(fPart, 0.52);
+                const cragDetail = 0.22 * Math.sin(x * 0.45 + z * 0.38) * Math.cos(x * 0.28 - z * 0.52);
+                terracedMountain = stepped * strataStep + cragDetail;
+            }
+
+            return duneFloor + terracedMountain;
         }
 
-        // Realistic Rayleigh/Mie Atmospheric Desert Sky Dome & Distant Horizon Mountain Silhouettes
+        function sampleSandDeform(x, z) {
+            const u = (x / terrainSize + 0.5) * terrainSegs;
+            const v = (z / terrainSize + 0.5) * terrainSegs;
+            if (u < 0 || u >= terrainSegs || v < 0 || v >= terrainSegs) return 0.0;
+            const ix = Math.floor(u);
+            const iz = Math.floor(v);
+            const fx = u - ix;
+            const fz = v - iz;
+            const idx00 = iz * gridSide + ix;
+            const d00 = sandDeformGrid[idx00];
+            const d10 = sandDeformGrid[idx00 + 1];
+            const d01 = sandDeformGrid[idx00 + gridSide];
+            const d11 = sandDeformGrid[idx00 + gridSide + 1];
+            return (d00 * (1 - fx) + d10 * fx) * (1 - fz) + (d01 * (1 - fx) + d11 * fx) * fz;
+        }
+
+        function getSandErodibility(x, z) {
+            const r = Math.hypot(x, z);
+            if (r < 8.4) return 0.0; // Helipad concrete foundation is non-erodible
+            const baseH = getBaseDesertHeight(x, z);
+            if (baseH > 2.4) return 0.0; // Solid sandstone rock cliffs are non-erodible by airflow
+            const padBlend = Math.min(1.0, (r - 8.4) / 3.2);
+            const rockBlend = Math.min(1.0, Math.max(0.0, (2.4 - baseH) / 1.4));
+            return padBlend * rockBlend;
+        }
+
+        function getDesertHeight(x, z) {
+            return getBaseDesertHeight(x, z) + sampleSandDeform(x, z);
+        }
+
+        // Realistic Rayleigh/Mie Atmospheric Desert Sky Dome & Distant Horizon Sandstone Mesa Silhouettes
         const desertSkyGeo = new THREE.SphereGeometry(142, 48, 28);
         const desertSkyMat = new THREE.ShaderMaterial({
             side: THREE.BackSide,
@@ -1297,24 +1395,25 @@
                     float elev = clamp(dir.y, -0.15, 1.0);
 
                     // Desert sky gradient: warm cobalt-slate zenith -> dusty ochre-amber horizon
-                    vec3 zenithCol = vec3(0.54, 0.67, 0.79);
-                    vec3 midSkyCol = vec3(0.85, 0.77, 0.66);
-                    vec3 horizonHaze = vec3(0.91, 0.79, 0.63);
-                    vec3 groundCol = vec3(0.74, 0.58, 0.40);
+                    vec3 zenithCol = vec3(0.50, 0.65, 0.78);
+                    vec3 midSkyCol = vec3(0.84, 0.75, 0.64);
+                    vec3 horizonHaze = vec3(0.90, 0.76, 0.59);
+                    vec3 groundCol = vec3(0.70, 0.52, 0.36);
 
                     vec3 col = mix(horizonHaze, midSkyCol, smoothstep(0.0, 0.28, max(0.0, elev)));
                     col = mix(col, zenithCol, smoothstep(0.22, 0.85, max(0.0, elev)));
 
-                    // Distant desert mountain & mega-dune silhouettes near horizon
+                    // Distant stepped sandstone mesa & canyon silhouettes near horizon
                     float az = atan(dir.z, dir.x);
-                    float mtnHeight = 0.022 * sin(az * 5.0 + 1.2)
-                                    + 0.015 * cos(az * 11.0 - 0.7)
-                                    + 0.008 * sin(az * 23.0)
-                                    + 0.025;
-                    if (elev < mtnHeight && elev > -0.05) {
-                        float ridgeFade = smoothstep(mtnHeight, mtnHeight - 0.006, elev);
-                        vec3 mtnCol = mix(vec3(0.76, 0.62, 0.46), horizonHaze, 0.55);
-                        col = mix(col, mtnCol, ridgeFade * 0.65);
+                    float rawMesa = 0.045 * sin(az * 4.0 + 0.8)
+                                  + 0.032 * cos(az * 9.0 - 0.5)
+                                  + 0.018 * sin(az * 19.0)
+                                  + 0.052;
+                    float steppedMesa = floor(rawMesa * 38.0) / 38.0 + fract(rawMesa * 38.0) * 0.35 / 38.0;
+                    if (elev < steppedMesa && elev > -0.05) {
+                        float ridgeFade = smoothstep(steppedMesa, steppedMesa - 0.008, elev);
+                        vec3 mtnCol = mix(vec3(0.68, 0.46, 0.32), horizonHaze, 0.48);
+                        col = mix(col, mtnCol, ridgeFade * 0.75);
                     }
                     col = mix(groundCol, col, smoothstep(-0.06, 0.01, elev));
 
@@ -1355,40 +1454,31 @@
                     const nx = (x / size) * Math.PI * 2;
                     const idx = (y * size + x) * 4;
 
-                    // Domain-warped asymmetric wind-blown sand ripples (sawtooth-like crest profile)
                     const warp1 = Math.sin(nx * 2.0 + ny * 2.0) * 0.65
                                 + Math.cos(nx * 5.0 - ny * 4.0) * 0.28
                                 + Math.sin(nx * 9.0 + ny * 7.0) * 0.12;
                     const phase1 = nx * 24.0 + ny * 16.0 + warp1 * 2.8;
-                    // Asymmetric ripple wave: gentle windward slope, sharp crest, steep leeward drop
                     const s1 = Math.sin(phase1);
                     const asymRipple1 = s1 + 0.35 * Math.sin(phase1 * 2.0 - 0.6);
 
-                    // Secondary finer cross-ripples in the troughs
                     const phase2 = nx * 52.0 + ny * 34.0 - warp1 * 2.2;
                     const asymRipple2 = Math.sin(phase2) * 0.28;
 
-                    // Multi-mineral micro-sand grain noise (quartz, feldspar, iron-oxide grains)
                     const h1 = ((Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1 + 1) % 1;
                     const h2 = ((Math.sin(x * 93.989 + y * 67.345) * 24634.6345) % 1 + 1) % 1;
                     const microGrain = (h1 - 0.5) * 0.42 + (h2 - 0.5) * 0.25;
-
-                    // Quartz specular micro-sparkle on sunlit ripple crests
                     const sparkle = (h1 > 0.965 && s1 > 0.2) ? 28.0 : 0.0;
-
                     const heightVal = asymRipple1 * 0.58 + asymRipple2 + microGrain * 0.35;
 
-                    // Rich natural desert sand coloration (golden buff crests, deeper ochre-sienna troughs)
-                    dA[idx]     = Math.min(255, Math.max(0, 212 + heightVal * 26 + sparkle));
-                    dA[idx + 1] = Math.min(255, Math.max(0, 171 + heightVal * 22 + sparkle * 0.9));
-                    dA[idx + 2] = Math.min(255, Math.max(0, 122 + heightVal * 17 + sparkle * 0.7));
+                    dA[idx]     = Math.min(255, Math.max(0, 224 + heightVal * 24 + sparkle));
+                    dA[idx + 1] = Math.min(255, Math.max(0, 188 + heightVal * 20 + sparkle * 0.9));
+                    dA[idx + 2] = Math.min(255, Math.max(0, 142 + heightVal * 16 + sparkle * 0.7));
                     dA[idx + 3] = 255;
 
                     const bVal = Math.min(255, Math.max(0, 128 + heightVal * 88));
                     dB[idx] = dB[idx + 1] = dB[idx + 2] = bVal;
                     dB[idx + 3] = 255;
 
-                    // Crests are slightly smoother/glintier due to sorted fine quartz; troughs are rougher
                     const rVal = Math.min(255, Math.max(0, 218 - asymRipple1 * 24 - sparkle * 3.2 + (h2 - 0.5) * 22));
                     dR[idx] = dR[idx + 1] = dR[idx + 2] = rVal;
                     dR[idx + 3] = 255;
@@ -1414,29 +1504,212 @@
         const desertTerrainMat = new THREE.MeshStandardMaterial({
             map: desertTex.map,
             bumpMap: desertTex.bumpMap,
-            bumpScale: 0.055,
+            bumpScale: 0.065,
             roughnessMap: desertTex.roughMap,
-            roughness: 0.86,
+            roughness: 0.88,
             metalness: 0.03,
+            vertexColors: true,
             envMapIntensity: 0.72
         });
 
-        const terrainSize = 220;
-        const terrainSegs = 240;
         const desertTerrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, terrainSegs, terrainSegs);
         desertTerrainGeo.rotateX(-Math.PI / 2);
 
         const tPos = desertTerrainGeo.attributes.position;
+        const tColors = new Float32Array(tPos.count * 3);
+        const baseHeightsCache = new Float32Array(tPos.count);
+
+        function computeTerrainVertexColor(vx, vz, baseH, deformH, outArray, idx3) {
+            // Blend between golden valley sand and stratified reddish-terracotta sandstone mountains
+            const rockFactor = Math.min(1.0, Math.max(0.0, (baseH - 1.1) / 2.6));
+            // Sedimentary strata horizontal banding on sandstone mountains
+            const strataWave = Math.sin(baseH * 3.6 + Math.sin(vx * 0.12) * 0.8) * 0.5 + Math.cos(baseH * 9.2) * 0.3;
+
+            // Golden quartz sand base
+            let r = 0.96, g = 0.89, b = 0.78;
+            if (rockFactor > 0.01) {
+                // Stratified Reddish-Ochre Sandstone (Red Rock Canyon palette)
+                const sr = THREE.MathUtils.clamp(0.76 + strataWave * 0.14, 0.52, 0.92);
+                const sg = THREE.MathUtils.clamp(0.46 + strataWave * 0.10, 0.30, 0.65);
+                const sb = THREE.MathUtils.clamp(0.31 + strataWave * 0.08, 0.18, 0.48);
+                r = THREE.MathUtils.lerp(r, sr, rockFactor);
+                g = THREE.MathUtils.lerp(g, sg, rockFactor);
+                b = THREE.MathUtils.lerp(b, sb, rockFactor);
+            }
+
+            // Visual feedback for scoured depressions (darker damp sub-sand) vs pushed-up sand berms (bright crest sand)
+            if (deformH < -0.015) {
+                const scourShade = Math.max(0.62, 1.0 + deformH * 0.55);
+                r *= scourShade;
+                g *= scourShade * 0.96;
+                b *= scourShade * 0.92;
+            } else if (deformH > 0.015) {
+                const bermBright = Math.min(1.16, 1.0 + deformH * 0.38);
+                r = Math.min(1.0, r * bermBright);
+                g = Math.min(1.0, g * bermBright);
+                b = Math.min(1.0, b * bermBright);
+            }
+
+            outArray[idx3]     = r;
+            outArray[idx3 + 1] = g;
+            outArray[idx3 + 2] = b;
+        }
+
         for (let i = 0; i < tPos.count; i++) {
             const vx = tPos.getX(i);
             const vz = tPos.getZ(i);
-            tPos.setY(i, getDesertHeight(vx, vz));
+            const bh = getBaseDesertHeight(vx, vz);
+            baseHeightsCache[i] = bh;
+            tPos.setY(i, bh);
+            computeTerrainVertexColor(vx, vz, bh, 0.0, tColors, i * 3);
         }
+        desertTerrainGeo.setAttribute('color', new THREE.BufferAttribute(tColors, 3));
         desertTerrainGeo.computeVertexNormals();
 
         const desertTerrainMesh = new THREE.Mesh(desertTerrainGeo, desertTerrainMat);
         desertTerrainMesh.receiveShadow = true;
         desertGroup.add(desertTerrainMesh);
+
+        // ============================================================================
+        // 3B. STARTING POINT TACTICAL HELIPAD (PAD-01) AT ORIGIN (0, 0, 0)
+        // ============================================================================
+        function createHelipadDeckTexture() {
+            const size = 1024;
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const cx = size / 2, cy = size / 2;
+
+            // Dark tactical weathered non-skid concrete & steel deck
+            ctx.fillStyle = '#293038';
+            ctx.fillRect(0, 0, size, size);
+
+            // Micro-asphalt aggregate noise
+            for (let i = 0; i < 24000; i++) {
+                const x = Math.random() * size;
+                const y = Math.random() * size;
+                const v = 38 + (Math.random() - 0.5) * 18;
+                ctx.fillStyle = `rgb(${v},${v + 3},${v + 6})`;
+                ctx.fillRect(x, y, 2, 2);
+            }
+
+            // Expansion joint grid lines
+            ctx.strokeStyle = 'rgba(15, 23, 42, 0.65)';
+            ctx.lineWidth = 3;
+            for (let g = 128; g < size; g += 128) {
+                ctx.beginPath(); ctx.moveTo(g, 0); ctx.lineTo(g, size); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, g); ctx.lineTo(size, g); ctx.stroke();
+            }
+
+            // Outer yellow/black hazard border ring
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(cx, cy, 468, 0, Math.PI * 2);
+            ctx.arc(cx, cy, 434, 0, Math.PI * 2, true);
+            ctx.clip();
+            ctx.fillStyle = '#eab308';
+            ctx.fillRect(0, 0, size, size);
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 24;
+            for (let s = -size; s < size * 2; s += 48) {
+                ctx.beginPath();
+                ctx.moveTo(s, 0);
+                ctx.lineTo(s - size, size);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // Aiming circle & white/yellow tactical markings
+            ctx.strokeStyle = '#f8fafc';
+            ctx.lineWidth = 14;
+            ctx.setLineDash([42, 22]);
+            ctx.beginPath();
+            ctx.arc(cx, cy, 355, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 265, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Central Helipad "H" Marking
+            ctx.fillStyle = '#f8fafc';
+            const hW = 190, hH = 260, barT = 42;
+            ctx.fillRect(cx - hW / 2, cy - hH / 2, barT, hH);
+            ctx.fillRect(cx + hW / 2 - barT, cy - hH / 2, barT, hH);
+            ctx.fillRect(cx - hW / 2, cy - barT / 2, hW, barT);
+
+            // Stencils: "XH-99 // TACTICAL PAD-01" & "MAX GROSS 14T"
+            ctx.fillStyle = '#facc15';
+            ctx.font = '800 30px "JetBrains Mono", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('XH-99 // TACTICAL PAD-01', cx, cy + 215);
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '700 22px "JetBrains Mono", monospace';
+            ctx.fillText('COMPOUND ROTORCRAFT TEST FACILITY', cx, cy - 195);
+
+            // Subtle blown sand dust accumulation around the outer perimeter
+            const dustGrad = ctx.createRadialGradient(cx, cy, 320, cx, cy, 510);
+            dustGrad.addColorStop(0, 'rgba(210, 168, 114, 0.0)');
+            dustGrad.addColorStop(0.75, 'rgba(210, 168, 114, 0.18)');
+            dustGrad.addColorStop(1, 'rgba(202, 158, 104, 0.55)');
+            ctx.fillStyle = dustGrad;
+            ctx.fillRect(0, 0, size, size);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.anisotropy = 8;
+            return tex;
+        }
+
+        const helipadGroup = new THREE.Group();
+        desertGroup.add(helipadGroup);
+
+        const padTex = createHelipadDeckTexture();
+        const padDeckMat = new THREE.MeshStandardMaterial({
+            map: padTex,
+            roughness: 0.72,
+            metalness: 0.15
+        });
+        const padApronMat = new THREE.MeshStandardMaterial({
+            color: 0x3b424c,
+            roughness: 0.78,
+            metalness: 0.25
+        });
+
+        // Octagonal blast-deflector concrete base apron
+        const padApronMesh = new THREE.Mesh(new THREE.CylinderGeometry(6.9, 8.2, 0.16, 8), padApronMat);
+        padApronMesh.position.set(0, -0.075, 0);
+        padApronMesh.rotation.y = Math.PI / 8;
+        padApronMesh.receiveShadow = true;
+        helipadGroup.add(padApronMesh);
+
+        // Main circular high-resolution helipad top deck (flush at y = 0.004)
+        const padTopMesh = new THREE.Mesh(new THREE.CylinderGeometry(6.65, 6.80, 0.04, 48), padDeckMat);
+        padTopMesh.position.set(0, -0.016, 0);
+        padTopMesh.receiveShadow = true;
+        helipadGroup.add(padTopMesh);
+
+        // 8 Perimeter Inset Helipad Lights (Alternating Green & Amber LED Beacons) + Tie-Down Padeyes
+        const padLightMatGreen = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+        const padLightMatAmber = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+        for (let i = 0; i < 8; i++) {
+            const ang = (i / 8) * Math.PI * 2 + Math.PI / 8;
+            const lx = Math.cos(ang) * 6.55;
+            const lz = Math.sin(ang) * 6.55;
+
+            const fixture = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.20, 0.05, 16), padApronMat);
+            fixture.position.set(lx, 0.015, lz);
+            helipadGroup.add(fixture);
+
+            const lens = new THREE.Mesh(
+                new THREE.SphereGeometry(0.09, 12, 8),
+                i % 2 === 0 ? padLightMatGreen : padLightMatAmber
+            );
+            lens.position.set(lx, 0.035, lz);
+            helipadGroup.add(lens);
+        }
 
         // Contact AO shadow pad on desert floor
         const desertAoPad = aoPad.clone();
@@ -3225,6 +3498,198 @@
         });
 
         // ----------------------------------------------------------------------------
+        // SUBSYSTEM 17: TACTICAL ORDNANCE & 20MM ROTARY CANNON (翼下懸掛導彈、火箭莢艙與機鼻旋轉機砲)
+        // ----------------------------------------------------------------------------
+        const sysOrdnance = registerSubsystem({
+            id: 'ordnance',
+            code: 'SYS-17 // TACTICAL ORDNANCE',
+            title: '翼下 AGM-179 導引飛彈、火箭莢艙與 20mm 機鼻旋轉機砲 (Tactical Ordnance)',
+            desc: '內側掛架配置雙聯裝發射滑軌與 4 枚 AGM-179 複合尋標導引飛彈（含半主動雷射玻璃整流罩、高爆黃色識別環與十字尾翼）；外側掛架配置 19 聯裝 70mm 火箭莢艙；機鼻下方配置 20mm 三管加特林旋轉機砲，支援實彈射擊與沉浸式後座力震動。',
+            explodeVec: new THREE.Vector3(0, -1.05, 0.85),
+            labelOffset: new THREE.Vector3(-2.15, -0.45, 0.4)
+        });
+
+        const MAT_MISSILE_BODY = new THREE.MeshStandardMaterial({ color: 0x242a32, roughness: 0.42, metalness: 0.48 });
+        const MAT_MISSILE_FIN = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.32, metalness: 0.78 });
+        const MAT_MUZZLE_FLASH = new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.92, side: THREE.DoubleSide });
+
+        function buildGuidedMissileMesh() {
+            const msl = new THREE.Group();
+            // Main cylindrical body (length ~ 1.18m)
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.058, 0.96, 20), MAT_MISSILE_BODY);
+            body.rotation.x = Math.PI / 2;
+            msl.add(body);
+
+            // Tapered nose cone + semi-transparent laser seeker dome
+            const noseCone = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.058, 0.14, 20), MAT_MISSILE_BODY);
+            noseCone.rotation.x = Math.PI / 2;
+            noseCone.position.z = 0.55;
+            msl.add(noseCone);
+
+            const seekerDome = new THREE.Mesh(new THREE.SphereGeometry(0.028, 16, 12), MAT.flirGoldLens);
+            seekerDome.position.z = 0.62;
+            msl.add(seekerDome);
+
+            // Yellow High-Explosive Warhead Tactical Stripe & Guidance Collar
+            const warheadBand = new THREE.Mesh(new THREE.CylinderGeometry(0.0595, 0.0595, 0.045, 20), MAT.chockYellow);
+            warheadBand.rotation.x = Math.PI / 2;
+            warheadBand.position.z = 0.32;
+            msl.add(warheadBand);
+
+            const umbilicalBand = new THREE.Mesh(new THREE.CylinderGeometry(0.060, 0.060, 0.035, 20), MAT.machinedSteel);
+            umbilicalBand.rotation.x = Math.PI / 2;
+            umbilicalBand.position.z = -0.18;
+            msl.add(umbilicalBand);
+
+            // 4 Cruciform Aft Tail Control Fins + 4 Forward Strakes
+            for (let f = 0; f < 4; f++) {
+                const ang = (f / 4) * Math.PI * 2 + Math.PI / 4;
+                const tailFin = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.16, 0.18), MAT_MISSILE_FIN);
+                tailFin.position.set(Math.cos(ang) * 0.062, Math.sin(ang) * 0.062, -0.36);
+                tailFin.rotation.z = ang - Math.PI / 2;
+                msl.add(tailFin);
+
+                const fwdStrake = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.085, 0.24), MAT_MISSILE_FIN);
+                fwdStrake.position.set(Math.cos(ang) * 0.058, Math.sin(ang) * 0.058, 0.12);
+                fwdStrake.rotation.z = ang - Math.PI / 2;
+                msl.add(fwdStrake);
+            }
+
+            // Rocket Motor Exhaust Nozzle
+            const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.054, 0.08, 16), MAT.exhaustDark);
+            nozzle.rotation.x = Math.PI / 2;
+            nozzle.position.z = -0.51;
+            msl.add(nozzle);
+
+            return msl;
+        }
+
+        function buildRocketPodMesh() {
+            const pod = new THREE.Group();
+            const casing = new THREE.Mesh(new THREE.CylinderGeometry(0.145, 0.145, 0.92, 24), MAT.stealthDarkTrim);
+            casing.rotation.x = Math.PI / 2;
+            pod.add(casing);
+
+            const frontFace = new THREE.Mesh(new THREE.CylinderGeometry(0.135, 0.145, 0.08, 24), MAT.machinedSteel);
+            frontFace.rotation.x = Math.PI / 2;
+            frontFace.position.z = 0.48;
+            pod.add(frontFace);
+
+            const rearFace = new THREE.Mesh(new THREE.CylinderGeometry(0.145, 0.125, 0.08, 24), MAT.anodizedGunmetal);
+            rearFace.rotation.x = Math.PI / 2;
+            rearFace.position.z = -0.48;
+            pod.add(rearFace);
+
+            // 19-Tube 70mm Rocket Launch Tubes on Front Face
+            const tubePositions = [[0, 0]];
+            for (let i = 0; i < 6; i++) {
+                const a = (i / 6) * Math.PI * 2;
+                tubePositions.push([Math.cos(a) * 0.046, Math.sin(a) * 0.046]);
+            }
+            for (let i = 0; i < 12; i++) {
+                const a = (i / 12) * Math.PI * 2;
+                tubePositions.push([Math.cos(a) * 0.094, Math.sin(a) * 0.094]);
+            }
+            tubePositions.forEach(([tx, ty]) => {
+                const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.03, 10), MAT.exhaustDark);
+                tube.rotation.x = Math.PI / 2;
+                tube.position.set(tx, ty, 0.515);
+                pod.add(tube);
+            });
+
+            return pod;
+        }
+
+        const mountedMissiles = [];
+        const ordnanceSideGroups = [];
+
+        [-1, 1].forEach(side => {
+            const sideOrdGroup = new THREE.Group();
+            sideOrdGroup.userData.side = side;
+
+            // Inner Pylon (x = ±1.45): Dual-Rail Missile Rack + 2 AGM-179 Guided Missiles
+            const rackBeam = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.045, 0.58), MAT.anodizedGunmetal);
+            rackBeam.position.set(side * 1.45, 1.12, -0.36);
+            sideOrdGroup.add(rackBeam);
+
+            [-0.12, 0.12].forEach((railOffset, rIdx) => {
+                const rail = new THREE.Mesh(new THREE.BoxGeometry(0.048, 0.042, 0.76), MAT.machinedSteel);
+                rail.position.set(side * 1.45 + railOffset, 1.09, -0.34);
+                sideOrdGroup.add(rail);
+
+                const mslMesh = buildGuidedMissileMesh();
+                mslMesh.position.set(side * 1.45 + railOffset, 1.01, -0.30);
+                sideOrdGroup.add(mslMesh);
+                mountedMissiles.push({
+                    mesh: mslMesh,
+                    side,
+                    localPos: new THREE.Vector3(side * 1.45 + railOffset, 1.01, -0.30),
+                    available: true
+                });
+            });
+
+            // Outer Pylon (x = ±2.08): 19-Tube 70mm Hydra Rocket Pod
+            const rPod = buildRocketPodMesh();
+            rPod.position.set(side * 2.08, 1.01, -0.34);
+            sideOrdGroup.add(rPod);
+
+            sysOrdnance.add(sideOrdGroup);
+            ordnanceSideGroups.push(sideOrdGroup);
+        });
+
+        // Chin-Mounted 20mm 3-Barrel Gatling Rotary Autocannon
+        const chinGunTurret = new THREE.Group();
+        chinGunTurret.position.set(0, 0.78, 3.55);
+        sysOrdnance.add(chinGunTurret);
+
+        const gunCradle = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.16, 0.42), MAT.anodizedGunmetal);
+        chinGunTurret.add(gunCradle);
+
+        const gunBarrelsSpinGroup = new THREE.Group();
+        gunBarrelsSpinGroup.position.set(0, -0.02, 0.22);
+        chinGunTurret.add(gunBarrelsSpinGroup);
+
+        for (let b = 0; b < 3; b++) {
+            const ang = (b / 3) * Math.PI * 2;
+            const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.016, 0.68, 12), MAT.machinedSteel);
+            barrel.rotation.x = Math.PI / 2;
+            barrel.position.set(Math.cos(ang) * 0.032, Math.sin(ang) * 0.032, 0.30);
+            gunBarrelsSpinGroup.add(barrel);
+        }
+
+        const muzzleClamp1 = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.052, 0.04, 16), MAT.anodizedGunmetal);
+        muzzleClamp1.rotation.x = Math.PI / 2;
+        muzzleClamp1.position.z = 0.38;
+        gunBarrelsSpinGroup.add(muzzleClamp1);
+
+        const muzzleClamp2 = new THREE.Mesh(new THREE.CylinderGeometry(0.054, 0.050, 0.05, 16), MAT.brassFitting);
+        muzzleClamp2.rotation.x = Math.PI / 2;
+        muzzleClamp2.position.z = 0.60;
+        gunBarrelsSpinGroup.add(muzzleClamp2);
+
+        // 3D Starburst Muzzle Flash Mesh & Dynamic Muzzle PointLight
+        const muzzleFlashGroup = new THREE.Group();
+        muzzleFlashGroup.position.set(0, 0, 0.68);
+        muzzleFlashGroup.visible = false;
+        gunBarrelsSpinGroup.add(muzzleFlashGroup);
+
+        const flashCone = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.45, 8), MAT_MUZZLE_FLASH);
+        flashCone.rotation.x = Math.PI / 2;
+        flashCone.position.z = 0.22;
+        muzzleFlashGroup.add(flashCone);
+
+        for (let p = 0; p < 3; p++) {
+            const petal = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.36), MAT_MUZZLE_FLASH);
+            petal.rotation.z = (p / 3) * Math.PI;
+            petal.position.z = 0.08;
+            muzzleFlashGroup.add(petal);
+        }
+
+        const muzzleLight = new THREE.PointLight(0xffb703, 0.0, 9.5);
+        muzzleLight.position.set(0, -0.02, 0.85);
+        chinGunTurret.add(muzzleLight);
+
+        // ----------------------------------------------------------------------------
         // SUBSYSTEM 13 & 14: COAXIAL COUNTER-ROTATING ROTOR SYSTEM
         // ----------------------------------------------------------------------------
         const sysRotorLower = registerSubsystem({
@@ -4459,7 +4924,11 @@
             roll: 0.0,
             hoverAlt: 0.0,
             targetAlt: 0.0,
-            gearRetract: 0.0, // 0.0 = Down & Locked, 1.0 = Fully Retracted into Wheel Wells
+            gearRetract: 0.0,      // 0.0 = Down & Locked, 1.0 = Fully Retracted into Wheel Wells
+            gearCompression: 1.0,  // 1.0 = Weight-on-Wheels compressed oleo struts, 0.0 = Airborne extended
+            bladeConing: 0.0,      // Dynamic upward blade coning under lift load
+            tailPusherBoost: 1.0,  // Compound tail thruster speed multiplier during forward cruise
+            flightPhase: 'GROUND IDLE',
             inputs: { w: false, s: false, a: false, d: false, r: false, f: false },
             gyroEnabled: false,
             gyroCalibrated: false,
@@ -4483,6 +4952,319 @@
                 y: heliFlight.y + ly,
                 z: heliFlight.z - lx * sinY + lz * cosY
             };
+        }
+
+        // ============================================================================
+        // 6C. COMBAT ORDNANCE BALLISTICS, EXPLOSIONS, CRATERS & IMMERSIVE CAMERA SHAKE
+        // ============================================================================
+        const combatFX = new THREE.Group();
+        scene.add(combatFX);
+
+        const activeTracers = [];
+        const activeMissiles = [];
+        const activeExplosions = [];
+        const smokeParticles = [];
+
+        let isFiringGun = false;
+        let gunFireTimer = 0.0;
+        let nextMissileIndex = 0;
+        let reloadTimer = 0.0;
+
+        // Multi-layered Camera & Airframe Shake State (High-freq cannon recoil + Low-freq missile/explosion blast)
+        const camShake = {
+            trauma: 0.0,
+            gunBuzz: 0.0,
+            offset: new THREE.Vector3(),
+            prevApplied: new THREE.Vector3()
+        };
+
+        function addCameraShake(amount) {
+            camShake.trauma = Math.min(1.0, camShake.trauma + amount);
+        }
+
+        function spawnSmokePuff(x, y, z, vx, vy, vz, scale = 0.25, colorHex = 0xe2e8f0, maxLife = 1.1) {
+            const mat = new THREE.MeshBasicMaterial({
+                color: colorHex,
+                transparent: true,
+                opacity: 0.65,
+                depthWrite: false
+            });
+            const mesh = new THREE.Mesh(new THREE.DodecahedronGeometry(scale, 1), mat);
+            mesh.position.set(x, y, z);
+            mesh.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
+            combatFX.add(mesh);
+            smokeParticles.push({ mesh, mat, vx, vy, vz, age: 0, maxLife, baseScale: scale });
+        }
+
+        /**
+         * Carves a permanent crater & raised rim into the deformable sand mesh at (cx, cz)
+         * and refreshes affected terrain vertices & normals.
+         */
+        function deformSandRegion(cx, cz, radius, depthDelta, rimRatio = 0.38, isInstantCrater = false) {
+            if (!isDesertMode) return;
+            const halfSize = terrainSize * 0.5;
+            const minIx = Math.max(1, Math.floor(((cx - radius * 1.8 + halfSize) / terrainSize) * terrainSegs));
+            const maxIx = Math.min(terrainSegs - 1, Math.ceil(((cx + radius * 1.8 + halfSize) / terrainSize) * terrainSegs));
+            const minIz = Math.max(1, Math.floor(((cz - radius * 1.8 + halfSize) / terrainSize) * terrainSegs));
+            const maxIz = Math.min(terrainSegs - 1, Math.ceil(((cz + radius * 1.8 + halfSize) / terrainSize) * terrainSegs));
+
+            let modified = false;
+            const colArr = desertTerrainGeo.attributes.color.array;
+
+            for (let iz = minIz; iz <= maxIz; iz++) {
+                const vz = (iz / terrainSegs - 0.5) * terrainSize;
+                for (let ix = minIx; ix <= maxIx; ix++) {
+                    const vx = (ix / terrainSegs - 0.5) * terrainSize;
+                    const dist = Math.hypot(vx - cx, vz - cz);
+                    if (dist > radius * 1.75) continue;
+
+                    const erod = getSandErodibility(vx, vz);
+                    if (erod <= 0.01) continue;
+
+                    const rNorm = dist / radius;
+                    let delta = 0.0;
+                    if (rNorm < 1.0) {
+                        // Excavate central bowl
+                        delta = -depthDelta * Math.cos(rNorm * Math.PI * 0.5) * erod;
+                    } else if (rNorm < 1.68) {
+                        // Push displaced sand into outer circular berm ridge
+                        const bermT = (rNorm - 1.0) / 0.68;
+                        delta = depthDelta * rimRatio * Math.sin(bermT * Math.PI) * erod;
+                    }
+
+                    if (Math.abs(delta) > 0.0001) {
+                        const vIdx = iz * gridSide + ix;
+                        const maxLimit = isInstantCrater ? 1.35 : 0.68;
+                        sandDeformGrid[vIdx] = THREE.MathUtils.clamp(sandDeformGrid[vIdx] + delta, -maxLimit, maxLimit * 0.65);
+                        if (-sandDeformGrid[vIdx] > maxSandScourDepth) {
+                            maxSandScourDepth = -sandDeformGrid[vIdx];
+                        }
+                        const newY = baseHeightsCache[vIdx] + sandDeformGrid[vIdx];
+                        tPos.setY(vIdx, newY);
+                        computeTerrainVertexColor(vx, vz, baseHeightsCache[vIdx], sandDeformGrid[vIdx], colArr, vIdx * 3);
+                        modified = true;
+                    }
+                }
+            }
+
+            if (modified) {
+                tPos.needsUpdate = true;
+                desertTerrainGeo.attributes.color.needsUpdate = true;
+                const valScourEl = document.getElementById('val-scour-depth');
+                if (valScourEl) valScourEl.textContent = `${maxSandScourDepth.toFixed(2)} m`;
+            }
+        }
+
+        function resetSandDeformation() {
+            sandDeformGrid.fill(0);
+            maxSandScourDepth = 0.0;
+            const colArr = desertTerrainGeo.attributes.color.array;
+            for (let i = 0; i < tPos.count; i++) {
+                const vx = tPos.getX(i);
+                const vz = tPos.getZ(i);
+                tPos.setY(i, baseHeightsCache[i]);
+                computeTerrainVertexColor(vx, vz, baseHeightsCache[i], 0.0, colArr, i * 3);
+            }
+            tPos.needsUpdate = true;
+            desertTerrainGeo.attributes.color.needsUpdate = true;
+            desertTerrainGeo.computeVertexNormals();
+            const valScourEl = document.getElementById('val-scour-depth');
+            if (valScourEl) valScourEl.textContent = '0.00 m';
+        }
+
+        function createExplosionAt(x, y, z, scale = 1.0) {
+            // Core fireball sphere
+            const coreMat = new THREE.MeshBasicMaterial({ color: 0xffedd5, transparent: true, opacity: 1.0 });
+            const coreMesh = new THREE.Mesh(new THREE.SphereGeometry(0.85 * scale, 20, 16), coreMat);
+            coreMesh.position.set(x, y + 0.3 * scale, z);
+            combatFX.add(coreMesh);
+
+            // Outer orange plasma shell
+            const shellMat = new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0.85 });
+            const shellMesh = new THREE.Mesh(new THREE.SphereGeometry(1.35 * scale, 20, 16), shellMat);
+            shellMesh.position.set(x, y + 0.35 * scale, z);
+            combatFX.add(shellMesh);
+
+            // Supersonic ground shockwave ring
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0xfde68a, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
+            const ringMesh = new THREE.Mesh(new THREE.RingGeometry(0.6 * scale, 1.2 * scale, 32), ringMat);
+            ringMesh.rotation.x = -Math.PI / 2;
+            ringMesh.position.set(x, y + 0.12, z);
+            combatFX.add(ringMesh);
+
+            // Flash point light
+            const light = new THREE.PointLight(0xff9e00, 18.0 * scale, 35.0 * scale);
+            light.position.set(x, y + 1.5 * scale, z);
+            combatFX.add(light);
+
+            activeExplosions.push({ coreMesh, coreMat, shellMesh, shellMat, ringMesh, ringMat, light, age: 0, maxLife: 0.85 * Math.sqrt(scale), scale });
+
+            // Plume of dark smoke & sand fountain
+            const puffCount = Math.round(14 * scale);
+            for (let i = 0; i < puffCount; i++) {
+                const ang = Math.random() * Math.PI * 2;
+                const spd = (2.5 + Math.random() * 9.5) * scale;
+                const isSand = i % 2 === 0;
+                spawnSmokePuff(
+                    x + (Math.random() - 0.5) * 0.8,
+                    y + 0.2,
+                    z + (Math.random() - 0.5) * 0.8,
+                    Math.cos(ang) * spd,
+                    (3.5 + Math.random() * 8.5) * scale,
+                    Math.sin(ang) * spd,
+                    (0.32 + Math.random() * 0.45) * scale,
+                    isSand ? 0xd4a373 : 0x334155,
+                    1.1 + Math.random() * 0.9
+                );
+            }
+
+            // Distance-attenuated blast wave camera shake
+            const distToCam = camera.position.distanceTo(new THREE.Vector3(x, y, z));
+            const blastShake = THREE.MathUtils.clamp((28.0 / Math.max(6.0, distToCam)) * 0.55 * scale, 0.12, 0.95);
+            addCameraShake(blastShake);
+
+            // Carve blast crater into sand bed
+            deformSandRegion(x, z, 3.2 * scale, 0.58 * scale, 0.45, true);
+        }
+
+        function fireCannonRound() {
+            const muzzleWorld = new THREE.Vector3();
+            muzzleFlashGroup.getWorldPosition(muzzleWorld);
+
+            const forwardDir = new THREE.Vector3(
+                Math.sin(heliFlight.yaw) * Math.cos(heliFlight.pitch),
+                -Math.sin(heliFlight.pitch) - 0.06,
+                Math.cos(heliFlight.yaw) * Math.cos(heliFlight.pitch)
+            ).normalize();
+
+            // Slight ballistic dispersion
+            forwardDir.x += (Math.random() - 0.5) * 0.022;
+            forwardDir.y += (Math.random() - 0.5) * 0.018;
+            forwardDir.z += (Math.random() - 0.5) * 0.022;
+            forwardDir.normalize();
+
+            const tracerMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+            const tracerMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 1.65, 6), tracerMat);
+            tracerMesh.position.copy(muzzleWorld);
+            tracerMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), forwardDir);
+            combatFX.add(tracerMesh);
+
+            activeTracers.push({
+                mesh: tracerMesh,
+                mat: tracerMat,
+                vx: forwardDir.x * 92.0 + heliFlight.vx,
+                vy: forwardDir.y * 92.0 + heliFlight.vy,
+                vz: forwardDir.z * 92.0 + heliFlight.vz,
+                age: 0
+            });
+
+            // High-frequency mechanical gun recoil & airframe pitch kick
+            camShake.gunBuzz = 1.0;
+            addCameraShake(0.11);
+            heliFlight.pitch = Math.max(-0.25, heliFlight.pitch - 0.0045);
+        }
+
+        function updateOrdnanceUI() {
+            const availCount = mountedMissiles.filter(m => m.available).length;
+            const txtMsl = document.getElementById('txt-fire-missile');
+            const hudMsl = document.getElementById('hud-msl-count');
+            const badge = document.getElementById('ordnance-badge');
+            if (txtMsl) txtMsl.textContent = availCount > 0 ? `發射導彈 (G) [${availCount}]` : '自動裝填中...';
+            if (hudMsl) hudMsl.textContent = String(availCount);
+            if (badge) {
+                badge.textContent = availCount > 0 ? `ARMED // ${availCount} MSL` : 'REARMING...';
+                badge.className = availCount > 0
+                    ? 'text-[10px] font-bold mono px-2 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-300'
+                    : 'text-[10px] font-bold mono px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300';
+            }
+        }
+
+        function rearmAllMissiles() {
+            mountedMissiles.forEach(m => {
+                m.available = true;
+                m.mesh.visible = true;
+            });
+            nextMissileIndex = 0;
+            reloadTimer = 0.0;
+            updateOrdnanceUI();
+        }
+
+        function launchMissile() {
+            // Find next available mounted missile
+            let slot = null;
+            for (let i = 0; i < mountedMissiles.length; i++) {
+                const idx = (nextMissileIndex + i) % mountedMissiles.length;
+                if (mountedMissiles[idx].available) {
+                    slot = mountedMissiles[idx];
+                    nextMissileIndex = (idx + 1) % mountedMissiles.length;
+                    break;
+                }
+            }
+            if (!slot) return;
+
+            slot.available = false;
+            slot.mesh.visible = false;
+            if (mountedMissiles.every(m => !m.available)) {
+                reloadTimer = 4.0; // Auto-reload all 4 missiles after 4 seconds
+            }
+            updateOrdnanceUI();
+
+            const startPos = new THREE.Vector3();
+            slot.mesh.getWorldPosition(startPos);
+
+            const forwardDir = new THREE.Vector3(
+                Math.sin(heliFlight.yaw) * Math.cos(heliFlight.pitch),
+                -Math.sin(heliFlight.pitch) - 0.035,
+                Math.cos(heliFlight.yaw) * Math.cos(heliFlight.pitch)
+            ).normalize();
+
+            const liveMesh = buildGuidedMissileMesh();
+            liveMesh.position.copy(startPos);
+            liveMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), forwardDir);
+
+            // Rocket motor tail flame cone + point light
+            const flameMesh = new THREE.Mesh(
+                new THREE.ConeGeometry(0.08, 0.65, 10),
+                new THREE.MeshBasicMaterial({ color: 0xffedd5 })
+            );
+            flameMesh.rotation.x = -Math.PI / 2;
+            flameMesh.position.z = -0.82;
+            liveMesh.add(flameMesh);
+
+            const motorLight = new THREE.PointLight(0xf97316, 6.5, 12.0);
+            motorLight.position.z = -0.75;
+            liveMesh.add(motorLight);
+
+            combatFX.add(liveMesh);
+
+            activeMissiles.push({
+                mesh: liveMesh,
+                flameMesh,
+                vx: heliFlight.vx + forwardDir.x * 26.0,
+                vy: heliFlight.vy + forwardDir.y * 26.0 - 1.2,
+                vz: heliFlight.vz + forwardDir.z * 26.0,
+                dir: forwardDir.clone(),
+                age: 0,
+                smokeAccum: 0
+            });
+
+            // Launch ignition smoke puff & strong launch thump shake
+            for (let k = 0; k < 6; k++) {
+                spawnSmokePuff(
+                    startPos.x - forwardDir.x * 0.6,
+                    startPos.y - 0.1,
+                    startPos.z - forwardDir.z * 0.6,
+                    -forwardDir.x * (4 + Math.random() * 5) + (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 1.5,
+                    -forwardDir.z * (4 + Math.random() * 5) + (Math.random() - 0.5) * 2,
+                    0.26,
+                    0xf1f5f9,
+                    0.85
+                );
+            }
+            addCameraShake(0.42);
+            heliFlight.pitch -= 0.018;
+            heliFlight.roll += slot.side * 0.025;
         }
 
         function syncSubsystemAerodynamicCenters() {
@@ -4818,7 +5600,23 @@
             posAttr.needsUpdate = true;
             velAttr.needsUpdate = true;
 
-            // 2. Update 3D Aerodynamic Streamline Ribbons (if visible)
+            // 2. Real-Time Sand Bed Scouring & Berm Deformation by High/Extreme Airflow
+            const groundEffectAtten = Math.exp(-heliFlight.hoverAlt * 0.14);
+            const pitchFactor = Math.max(0.12, (collectivePitchDeg + 5.5) / 11.5);
+            const downwashPower = currentRotorSpeed * pitchFactor * aeroForceMultiplier * groundEffectAtten;
+
+            if (downwashPower > 0.38 && currentExplode < 0.25) {
+                // Coaxial rotor downwash excavates a circular depression and pushes up an outer sand berm at r ~ 6.2m
+                const scourRate = (downwashPower - 0.38) * 0.095 * dt;
+                deformSandRegion(heliFlight.x, heliFlight.z, 5.6, scourRate, 0.42, false);
+
+                // Enclosed tail thruster jet carves a directional sand trough behind the tail boom
+                const tailWorld = localToWorldHeli(0, 0, -7.2);
+                deformSandRegion(tailWorld.x, tailWorld.z, 2.6, scourRate * 0.65, 0.35, false);
+            }
+
+            // 3. Update 3D Aerodynamic Streamline Ribbons & 4-Tier Intensity Meter
+            let tierCounts = [0, 0, 0, 0];
             if (streamLinesMesh.visible) {
                 let segOutIdx = 0;
                 for (let s = 0; s < STREAM_COUNT; s++) {
@@ -4833,6 +5631,11 @@
                     const gy = getDesertHeight(hx, hz);
                     const flow = sampleAerodynamicField(hx, hy, hz, gy, elapsed, lowerBladeAng, upperBladeAng);
                     const speed = Math.sqrt(flow.vx * flow.vx + flow.vy * flow.vy + flow.vz * flow.vz);
+
+                    if (speed < 6.0) tierCounts[0]++;
+                    else if (speed < 13.0) tierCounts[1]++;
+                    else if (speed < 21.0) tierCounts[2]++;
+                    else tierCounts[3]++;
 
                     const sRelX = hx - heliFlight.x;
                     const sRelZ = hz - heliFlight.z;
@@ -4849,7 +5652,6 @@
                         hy = streamHistory[headIdx + 1];
                         hz = streamHistory[headIdx + 2];
                     } else {
-                        // Shift trail history backward
                         for (let k = STREAM_SEGS - 1; k > 0; k--) {
                             const dst = (s * STREAM_SEGS + k) * 3;
                             const src = (s * STREAM_SEGS + k - 1) * 3;
@@ -4857,7 +5659,6 @@
                             streamHistory[dst + 1] = streamHistory[src + 1];
                             streamHistory[dst + 2] = streamHistory[src + 2];
                         }
-                        // Advance head along local airflow velocity
                         hx += flow.vx * dt * 0.85;
                         hy = Math.max(gy + 0.08, hy + flow.vy * dt * 0.85);
                         hz += flow.vz * dt * 0.85;
@@ -4866,11 +5667,27 @@
                         streamHistory[headIdx + 2] = hz;
                     }
 
-                    // Write line segments and speed-mapped colors (Golden Sand -> Sky Blue -> Emerald High-Speed)
-                    const speedNorm = Math.min(1.0, speed / 18.0);
-                    const rCol = 0.95 - speedNorm * 0.55;
-                    const gCol = 0.78 + speedNorm * 0.16;
-                    const bCol = 0.48 + speedNorm * 0.48;
+                    // 4-Tier Distinct Color Mapping:
+                    // Tier 1 (<6 m/s): Golden Sand | Tier 2 (6-13): Sky Cyan | Tier 3 (13-21): Emerald | Tier 4 (>21): Fiery Orange-Red
+                    let rCol, gCol, bCol;
+                    if (speed < 6.0) {
+                        rCol = 0.96; gCol = 0.72; bCol = 0.22;
+                    } else if (speed < 13.0) {
+                        const t = (speed - 6.0) / 7.0;
+                        rCol = THREE.MathUtils.lerp(0.96, 0.22, t);
+                        gCol = THREE.MathUtils.lerp(0.72, 0.74, t);
+                        bCol = THREE.MathUtils.lerp(0.22, 0.97, t);
+                    } else if (speed < 21.0) {
+                        const t = (speed - 13.0) / 8.0;
+                        rCol = THREE.MathUtils.lerp(0.22, 0.06, t);
+                        gCol = THREE.MathUtils.lerp(0.74, 0.82, t);
+                        bCol = THREE.MathUtils.lerp(0.97, 0.50, t);
+                    } else {
+                        const t = Math.min(1.0, (speed - 21.0) / 10.0);
+                        rCol = THREE.MathUtils.lerp(0.06, 0.98, t);
+                        gCol = THREE.MathUtils.lerp(0.82, 0.42, t);
+                        bCol = THREE.MathUtils.lerp(0.50, 0.09, t);
+                    }
 
                     for (let k = 0; k < STREAM_SEGS - 1; k++) {
                         const p0 = (s * STREAM_SEGS + k) * 3;
@@ -4896,6 +5713,30 @@
                 }
                 streamPosAttr.needsUpdate = true;
                 streamColAttr.needsUpdate = true;
+
+                // Update 4-Tier UI Energy Bars
+                const totalS = Math.max(1, STREAM_COUNT);
+                document.getElementById('bar-tier-low').style.width = `${(tierCounts[0] / totalS) * 100}%`;
+                document.getElementById('bar-tier-med').style.width = `${(tierCounts[1] / totalS) * 100}%`;
+                document.getElementById('bar-tier-high').style.width = `${(tierCounts[2] / totalS) * 100}%`;
+                document.getElementById('bar-tier-ext').style.width = `${(tierCounts[3] / totalS) * 100}%`;
+
+                const tierBadge = document.getElementById('val-airflow-tier');
+                if (tierBadge) {
+                    if (tierCounts[3] > 18) {
+                        tierBadge.textContent = 'TIER 4 // EXTREME SCOUR';
+                        tierBadge.className = 'text-orange-400 font-bold';
+                    } else if (tierCounts[2] > 22) {
+                        tierBadge.textContent = 'TIER 3 // HIGH VORTEX';
+                        tierBadge.className = 'text-emerald-400 font-bold';
+                    } else if (tierCounts[1] > 25) {
+                        tierBadge.textContent = 'TIER 2 // MED INFLOW';
+                        tierBadge.className = 'text-sky-400 font-bold';
+                    } else {
+                        tierBadge.textContent = 'TIER 1 // LOW DRIFT';
+                        tierBadge.className = 'text-amber-400 font-bold';
+                    }
+                }
             }
         }
 
@@ -4965,16 +5806,17 @@
         });
 
         // ============================================================================
-        // 7. INTERACTIVE CONTROLS (EXPLODED VIEW, ROTOR KINEMATICS, HULL X-RAY)
+        // 7. INTERACTIVE CONTROLS (EXPLODED VIEW, AUTO ROTOR KINEMATICS, WEAPONS, HULL X-RAY)
         // ============================================================================
 
         let targetExplode = 0.0;
         let currentExplode = 0.0;
         let showLabels = true;
-        let rotorActive = true; // Active by default so rotor downwash & desert sandstorm interact immediately!
-        let currentRotorSpeed = 1.0;
-        let maxRotorThrottle = 1.0;
-        let flirAutoScan = true; // FLIR 轉塔掃描預設開啟
+        let rotorMode = 'auto'; // 'auto' | 'manual' | 'off'
+        let rotorActive = true;
+        let currentRotorSpeed = 0.58; // Starts at realistic Ground Idle (58% / 186 RPM) on the Helipad
+        let maxRotorThrottle = 0.58;
+        let flirAutoScan = true;
 
         const sliderExplode = document.getElementById('slider-explode');
         const btnToggleExplode = document.getElementById('btn-toggle-explode');
@@ -4983,8 +5825,15 @@
         const statExplode = document.getElementById('stat-explode');
         const statRpm = document.getElementById('stat-rpm');
         const statSand = document.getElementById('stat-sand');
+        const sliderRpm = document.getElementById('slider-rpm');
+        const sliderPitch = document.getElementById('slider-pitch');
+        const valRpmPct = document.getElementById('val-rpm-pct');
+        const valPitch = document.getElementById('val-pitch');
 
-        // Environment Mode Switch (Desert Sandstorm vs. Pure White Grid Studio)
+        // Initialize collective pitch to Ground Idle (+1.5 deg)
+        collectivePitchDeg = 1.5;
+
+        // Environment Mode Switch (Sandstone Canyon & Helipad vs. Pure White Grid Studio)
         const btnEnvDesert = document.getElementById('btn-env-desert');
         const btnEnvStudio = document.getElementById('btn-env-studio');
         const envModeBadge = document.getElementById('env-mode-badge');
@@ -4998,14 +5847,14 @@
                 scene.environment = desertEnvTexture;
                 scene.background.setHex(0xdfc4a4);
                 scene.fog.color.setHex(0xd8b894);
-                scene.fog.density = 0.0155;
+                scene.fog.density = 0.0145;
                 hemiLight.color.setHex(0xfff7ed);
                 hemiLight.groundColor.setHex(0xb4834e);
                 keyLight.color.setHex(0xfff5e0);
 
                 btnEnvDesert.className = 'py-1.5 px-2 rounded-lg font-bold text-[11px] bg-amber-500 text-slate-950 shadow-sm transition';
                 btnEnvStudio.className = 'py-1.5 px-2 rounded-lg font-bold text-[11px] text-slate-600 hover:text-slate-900 transition';
-                envModeBadge.textContent = 'DESERT';
+                envModeBadge.textContent = 'CANYON PAD';
                 envModeBadge.className = 'text-[10px] font-bold mono px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300';
             } else {
                 scene.environment = studioEnvTexture;
@@ -5025,6 +5874,11 @@
 
         btnEnvDesert.addEventListener('click', () => setEnvironmentMode(true));
         btnEnvStudio.addEventListener('click', () => setEnvironmentMode(false));
+
+        // Reset Sand Deformation Button
+        document.getElementById('btn-reset-sand').addEventListener('click', () => {
+            resetSandDeformation();
+        });
 
         // Ambient Desert Wind Speed Slider
         document.getElementById('slider-wind').addEventListener('input', (e) => {
@@ -5060,7 +5914,7 @@
             sliderExplode.value = val * 100;
             explodePctBadge.textContent = `${pct}%`;
             statExplode.textContent = pct === 0 ? '0.0% (ASSEMBLED)' : `${(val * 100).toFixed(1)}% (EXPLODED)`;
-            btnExplodeText.textContent = val > 0.5 ? '一鍵收合組裝全機部件' : '一鍵展開全機 16 個子系統';
+            btnExplodeText.textContent = val > 0.5 ? '一鍵收合組裝全機部件' : '一鍵展開全機 17 個子系統';
         }
 
         btnToggleExplode.addEventListener('click', () => {
@@ -5077,25 +5931,72 @@
             showLabels = e.target.checked;
         });
 
-        // Rotor & Tail Thruster Spin Toggle
-        const btnToggleRotor = document.getElementById('btn-toggle-rotor');
-        const btnRotorText = document.getElementById('btn-rotor-text');
+        // 3-Way Rotor Mode Controls (AUTO / MANUAL / OFF)
+        const btnRotorAuto = document.getElementById('btn-rotor-auto');
+        const btnRotorManual = document.getElementById('btn-rotor-manual');
+        const btnRotorOff = document.getElementById('btn-rotor-off');
         const rotorStateBadge = document.getElementById('rotor-state-badge');
+        const btnAutoTakeoff = document.getElementById('btn-auto-takeoff');
+        const txtAutoTakeoff = document.getElementById('txt-auto-takeoff');
 
-        btnToggleRotor.addEventListener('click', () => {
-            rotorActive = !rotorActive;
-            if (rotorActive) {
-                btnRotorText.textContent = '停止旋翼運轉';
-                btnToggleRotor.classList.replace('bg-emerald-600', 'bg-rose-600');
-                btnToggleRotor.classList.replace('hover:bg-emerald-500', 'hover:bg-rose-500');
-                rotorStateBadge.textContent = 'SPINNING';
-                rotorStateBadge.className = 'text-[10px] font-bold mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-700';
-            } else {
-                btnRotorText.textContent = '啟動旋翼運轉';
-                btnToggleRotor.classList.replace('bg-rose-600', 'bg-emerald-600');
-                btnToggleRotor.classList.replace('hover:bg-rose-500', 'hover:bg-emerald-500');
-                rotorStateBadge.textContent = 'STOPPED';
+        function applyCollectivePitchVisuals(deg) {
+            collectivePitchDeg = deg;
+            valPitch.textContent = `${deg >= 0 ? '+' : ''}${deg.toFixed(1)}°`;
+            sliderPitch.value = deg;
+            const rad = THREE.MathUtils.degToRad(deg);
+            allBladeFeatherGroups.forEach(item => {
+                item.featherGroup.rotation.x = rad * item.dir;
+            });
+            const swashShift = (deg - 6) * 0.008;
+            lowerSwashGroup.position.y = 3.36 + swashShift;
+            upperSwashGroup.position.y = 4.24 + swashShift;
+        }
+
+        function setRotorMode(mode) {
+            rotorMode = mode;
+            rotorActive = (mode !== 'off');
+
+            btnRotorAuto.className = mode === 'auto'
+                ? 'py-1.5 px-2 rounded-lg font-bold text-[11px] bg-emerald-600 text-white shadow-sm transition'
+                : 'py-1.5 px-2 rounded-lg font-bold text-[11px] text-slate-700 hover:text-slate-900 transition';
+            btnRotorManual.className = mode === 'manual'
+                ? 'py-1.5 px-2 rounded-lg font-bold text-[11px] bg-sky-600 text-white shadow-sm transition'
+                : 'py-1.5 px-2 rounded-lg font-bold text-[11px] text-slate-700 hover:text-slate-900 transition';
+            btnRotorOff.className = mode === 'off'
+                ? 'py-1.5 px-2 rounded-lg font-bold text-[11px] bg-rose-600 text-white shadow-sm transition'
+                : 'py-1.5 px-2 rounded-lg font-bold text-[11px] text-slate-700 hover:text-rose-600 transition';
+
+            if (mode === 'off') {
+                heliFlight.targetAlt = 0.0;
+                rotorStateBadge.textContent = 'OFF // SPOOL DOWN';
                 rotorStateBadge.className = 'text-[10px] font-bold mono px-2 py-0.5 rounded bg-slate-200 text-slate-700';
+            } else if (mode === 'manual') {
+                if (maxRotorThrottle < 0.7) {
+                    maxRotorThrottle = 1.0;
+                    sliderRpm.value = 100;
+                    valRpmPct.textContent = '100% (320 RPM)';
+                }
+                rotorStateBadge.textContent = 'MANUAL // FIXED';
+                rotorStateBadge.className = 'text-[10px] font-bold mono px-2 py-0.5 rounded bg-sky-100 text-sky-700';
+            } else {
+                rotorStateBadge.textContent = `AUTO // ${heliFlight.flightPhase}`;
+                rotorStateBadge.className = 'text-[10px] font-bold mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-700';
+            }
+        }
+
+        btnRotorAuto.addEventListener('click', () => setRotorMode('auto'));
+        btnRotorManual.addEventListener('click', () => setRotorMode('manual'));
+        btnRotorOff.addEventListener('click', () => setRotorMode('off'));
+
+        // One-Click Takeoff / Land Button in Sidebar
+        btnAutoTakeoff.addEventListener('click', () => {
+            if (rotorMode === 'off') setRotorMode('auto');
+            if (heliFlight.targetAlt < 0.8) {
+                heliFlight.targetAlt = 3.8;
+                txtAutoTakeoff.textContent = '一鍵緩衝降落';
+            } else {
+                heliFlight.targetAlt = 0.0;
+                txtAutoTakeoff.textContent = '一鍵起飛懸停';
             }
         });
 
@@ -5109,24 +6010,48 @@
             btnToggleFlir.classList.toggle('text-slate-800', !flirAutoScan);
         });
 
-        // Rotor Throttle & Collective Pitch Sliders
-        document.getElementById('slider-rpm').addEventListener('input', (e) => {
+        // Manual Rotor Throttle & Collective Pitch Sliders (Dragging switches to MANUAL mode)
+        sliderRpm.addEventListener('input', (e) => {
+            setRotorMode('manual');
             const pct = parseInt(e.target.value, 10);
             maxRotorThrottle = pct / 100.0;
-            document.getElementById('val-rpm-pct').textContent = `${pct}%`;
+            valRpmPct.textContent = `${pct}% (${Math.round(maxRotorThrottle * 320)} RPM)`;
         });
 
-        document.getElementById('slider-pitch').addEventListener('input', (e) => {
+        sliderPitch.addEventListener('input', (e) => {
+            setRotorMode('manual');
             const deg = parseFloat(e.target.value);
-            collectivePitchDeg = deg;
-            document.getElementById('val-pitch').textContent = `${deg >= 0 ? '+' : ''}${deg.toFixed(1)}°`;
-            const rad = THREE.MathUtils.degToRad(deg);
-            allBladeFeatherGroups.forEach(item => {
-                item.featherGroup.rotation.x = rad * item.dir;
+            applyCollectivePitchVisuals(deg);
+        });
+
+        // Ordnance UI & HUD Buttons (20mm Autocannon & AGM-179 Guided Missile)
+        const btnFireGun = document.getElementById('btn-fire-gun');
+        const btnHudGun = document.getElementById('btn-hud-gun');
+        const btnTouchGun = document.getElementById('btn-touch-gun');
+
+        [btnFireGun, btnHudGun, btnTouchGun].forEach(btn => {
+            if (!btn) return;
+            const startGun = (e) => { e.preventDefault(); e.stopPropagation(); isFiringGun = true; };
+            const stopGun = (e) => { e.preventDefault(); e.stopPropagation(); isFiringGun = false; };
+            btn.addEventListener('pointerdown', startGun);
+            btn.addEventListener('pointerup', stopGun);
+            btn.addEventListener('pointerleave', stopGun);
+            btn.addEventListener('pointercancel', stopGun);
+            btn.addEventListener('touchstart', startGun, { passive: false });
+            btn.addEventListener('touchend', stopGun, { passive: false });
+        });
+
+        [document.getElementById('btn-fire-missile'), document.getElementById('btn-hud-missile'), document.getElementById('btn-touch-msl')].forEach(btn => {
+            if (!btn) return;
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                launchMissile();
             });
-            const swashShift = (deg - 6) * 0.008;
-            lowerSwashGroup.position.y = 3.36 + swashShift;
-            upperSwashGroup.position.y = 4.24 + swashShift;
+        });
+
+        document.getElementById('btn-rearm').addEventListener('click', () => {
+            rearmAllMissiles();
         });
 
         // Fuselage Hull X-Ray Mode Toggle & Opacity Slider
@@ -5221,13 +6146,14 @@
             if (padBtnMap[key]) {
                 padBtnMap[key].classList.toggle('pressed', pressed);
             }
-            // Automatically spool up rotors if user initiates flight while rotors were stopped
-            if (pressed && !rotorActive) {
-                btnToggleRotor.click();
+            // Automatically engage AUTO rotor mode if user initiates flight while rotors were off
+            if (pressed && rotorMode === 'off') {
+                setRotorMode('auto');
             }
-            // If user presses W/A/S/D while sitting at 0 altitude, automatically lift off to hover altitude
+            // If user presses W/A/S/D while sitting at 0 altitude, smoothly lift off to hover altitude
             if (pressed && (key === 'w' || key === 's' || key === 'a' || key === 'd') && heliFlight.targetAlt < 0.6) {
-                heliFlight.targetAlt = 2.2;
+                heliFlight.targetAlt = 2.8;
+                txtAutoTakeoff.textContent = '一鍵緩衝降落';
             }
         }
 
@@ -5237,7 +6163,15 @@
                 toggleAllUi();
                 return;
             }
-            if (!isUiHidden) return;
+            if (e.code === 'Space' || k === 'j') {
+                e.preventDefault();
+                isFiringGun = true;
+                return;
+            }
+            if ((k === 'g' || k === 'k') && !e.repeat) {
+                launchMissile();
+                return;
+            }
             if (k === 'w' || k === 'arrowup') setFlightKey('w', true);
             if (k === 's' || k === 'arrowdown') setFlightKey('s', true);
             if (k === 'a' || k === 'arrowleft') setFlightKey('a', true);
@@ -5248,6 +6182,10 @@
 
         window.addEventListener('keyup', (e) => {
             const k = e.key.toLowerCase();
+            if (e.code === 'Space' || k === 'j') {
+                isFiringGun = false;
+                return;
+            }
             if (k === 'w' || k === 'arrowup') setFlightKey('w', false);
             if (k === 's' || k === 'arrowdown') setFlightKey('s', false);
             if (k === 'a' || k === 'arrowleft') setFlightKey('a', false);
@@ -5306,10 +6244,6 @@
         const txtGyroState = document.getElementById('txt-gyro-state');
         const btnGyroCalibrate = document.getElementById('btn-gyro-calibrate');
 
-        // --- Gyroscope view control ---
-        // Uses a full orientation quaternion (same math as three.js DeviceOrientationControls) instead of raw
-        // beta/gamma Euler angles, which flip/jump near gimbal lock (e.g. phone held upright in landscape).
-        // View direction -> yaw/pitch, low-pass filtered, applied as relative camera motion (1:1 "window" feel).
         const gyroState = {
             alpha: 0, beta: 0, gamma: 0,
             hasData: false,
@@ -5340,7 +6274,6 @@
             _gyQ.setFromEuler(_gyEuler);
             _gyQ.multiply(_gyQ1);
             _gyQ.multiply(_gyQ0.setFromAxisAngle(_gyZee, -D(getScreenAngle())));
-            // Direction the screen is "looking" (back of the device)
             _gyFwd.set(0, 0, -1).applyQuaternion(_gyQ);
             return {
                 yaw: Math.atan2(_gyFwd.x, -_gyFwd.z),
@@ -5362,7 +6295,6 @@
             gyroState.needsSync = true;
         }
 
-        // Re-sync when the phone is rotated between portrait / landscape so the view never jumps
         window.addEventListener('orientationchange', resyncGyro);
         if (screen.orientation && screen.orientation.addEventListener) {
             screen.orientation.addEventListener('change', resyncGyro);
@@ -5437,7 +6369,7 @@
         });
 
         // ============================================================================
-        // 8. MAIN ANIMATION, KINEMATICS, FLIGHT CONTROL & 2D CALLOUT PROJECTION LOOP
+        // 8. MAIN ANIMATION, KINEMATICS, REALISTIC HELICOPTER FLIGHT & WEAPON LOOP
         // ============================================================================
 
         const clock = new THREE.Clock();
@@ -5447,6 +6379,12 @@
 
             const dt = Math.min(clock.getDelta(), 0.05);
             const elapsed = clock.getElapsedTime();
+
+            // Remove previous frame's camera shake offset before OrbitControls update so camera never drifts
+            if (camShake.prevApplied.lengthSq() > 0) {
+                camera.position.sub(camShake.prevApplied);
+                camShake.prevApplied.set(0, 0, 0);
+            }
 
             // 1. Smooth Camera Preset Interpolation
             if (camAnim) {
@@ -5459,21 +6397,103 @@
             }
             controls.update();
 
-            // 2. Smooth 16-Subsystem Exploded View Interpolation
+            // 2. Smooth 17-Subsystem Exploded View Interpolation
             currentExplode += (targetExplode - currentExplode) * Math.min(dt * 7.5, 1.0);
 
             subsystems.forEach(sys => {
                 sys.position.copy(sys.userData.explodeVec).multiplyScalar(currentExplode);
             });
 
-            // Additional lateral spread for port & starboard stub wings during exploded view
+            // Additional lateral spread for port & starboard stub wings and wing-mounted ordnance during exploded view
             wingPartsToSpread.forEach(wingSide => {
                 wingSide.position.x = wingSide.userData.side * currentExplode * 1.45;
             });
+            ordnanceSideGroups.forEach(ordSide => {
+                ordSide.position.x = ordSide.userData.side * currentExplode * 1.65;
+            });
 
-            // 3. Coaxial Counter-Rotating Rotors & Enclosed Tail Thruster Kinematics + Motion Blur Transition
+            // 3. Realistic Flight Controls, AUTO Rotor Governor & Landing Gear Oleo Compression
+            const fwdInput = (heliFlight.inputs.w ? 1 : 0) - (heliFlight.inputs.s ? 1 : 0);
+            const sideInput = (heliFlight.inputs.d ? 1 : 0) - (heliFlight.inputs.a ? 1 : 0);
+            const vertInput = (heliFlight.inputs.r ? 1 : 0) - (heliFlight.inputs.f ? 1 : 0);
+
+            if (rotorActive && currentExplode < 0.05) {
+                if (vertInput !== 0) {
+                    heliFlight.targetAlt = THREE.MathUtils.clamp(heliFlight.targetAlt + vertInput * 7.2 * dt, 0.0, 42.0);
+                    txtAutoTakeoff.textContent = heliFlight.targetAlt > 0.5 ? '一鍵緩衝降落' : '一鍵起飛懸停';
+                }
+            } else if (currentExplode > 0.05) {
+                heliFlight.targetAlt = 0.0;
+            }
+
+            const horizSpeed = Math.hypot(heliFlight.vx, heliFlight.vz);
+            const altError = heliFlight.targetAlt - heliFlight.hoverAlt;
+
+            // AUTO Rotor Governor: dynamically computes realistic RPM, Collective Pitch & Pusher Fan Boost from flight state
+            if (rotorMode === 'auto') {
+                let autoTargetRpm = 0.58; // 58% Ground Idle on Helipad
+                let autoTargetPitch = 1.5;
+                let autoPusherBoost = 0.65;
+
+                if (heliFlight.targetAlt <= 0.08 && heliFlight.hoverAlt <= 0.12 && fwdInput === 0 && sideInput === 0) {
+                    heliFlight.flightPhase = 'GROUND IDLE';
+                    autoTargetRpm = 0.58;
+                    autoTargetPitch = 1.5;
+                    autoPusherBoost = 0.55;
+                } else if (altError > 0.45) {
+                    heliFlight.flightPhase = heliFlight.hoverAlt < 1.2 ? 'TAKEOFF LIFT' : 'CLIMB';
+                    autoTargetRpm = 1.02; // 102% high-power takeoff governor
+                    autoTargetPitch = THREE.MathUtils.clamp(9.2 + altError * 1.4, 9.5, 13.5);
+                    autoPusherBoost = 1.05;
+                } else if (altError < -0.45) {
+                    heliFlight.flightPhase = heliFlight.hoverAlt < 2.2 ? 'LANDING FLARE' : 'DESCENT';
+                    autoTargetRpm = 0.98;
+                    // Cushion flare collective pull right before touchdown (hoverAlt < 1.5m)
+                    autoTargetPitch = heliFlight.hoverAlt < 1.5 ? 8.6 : 3.4;
+                    autoPusherBoost = 0.85;
+                } else if (horizSpeed > 3.2) {
+                    heliFlight.flightPhase = 'COMPOUND CRUISE';
+                    autoTargetRpm = 1.00;
+                    autoTargetPitch = THREE.MathUtils.clamp(8.2 + (horizSpeed / 18.0) * 3.6, 8.2, 12.2);
+                    // Sikorsky Raider-X style compound pusher thruster overdrive in high-speed cruise
+                    autoPusherBoost = 1.0 + (horizSpeed / 18.0) * 0.65;
+                } else {
+                    // In-Ground-Effect (IGE) requires slightly less collective than Out-of-Ground-Effect (OGE)
+                    const isIGE = heliFlight.hoverAlt < 4.5;
+                    heliFlight.flightPhase = isIGE ? 'IGE HOVER' : 'OGE HOVER';
+                    autoTargetRpm = 1.00;
+                    autoTargetPitch = isIGE ? 7.6 : 8.9;
+                    autoPusherBoost = 1.0;
+                }
+
+                maxRotorThrottle += (autoTargetRpm - maxRotorThrottle) * Math.min(dt * 2.4, 1.0);
+                const newPitch = collectivePitchDeg + (autoTargetPitch - collectivePitchDeg) * Math.min(dt * 4.2, 1.0);
+                heliFlight.tailPusherBoost += (autoPusherBoost - heliFlight.tailPusherBoost) * Math.min(dt * 3.5, 1.0);
+
+                // Sync UI sliders & labels in real time
+                const rpmPct = Math.round(maxRotorThrottle * 100);
+                sliderRpm.value = rpmPct;
+                valRpmPct.textContent = `${rpmPct}% (${Math.round(maxRotorThrottle * 320)} RPM)`;
+                applyCollectivePitchVisuals(newPitch);
+                rotorStateBadge.textContent = `AUTO // ${heliFlight.flightPhase}`;
+            } else if (rotorMode === 'manual') {
+                heliFlight.flightPhase = heliFlight.hoverAlt > 0.25 ? 'MANUAL FLIGHT' : 'MANUAL GROUND';
+                heliFlight.tailPusherBoost = 1.0 + (horizSpeed / 18.0) * 0.4;
+            } else {
+                heliFlight.flightPhase = 'SHUTDOWN';
+                heliFlight.tailPusherBoost = 0.0;
+            }
+
+            // Spool rotor angular velocity toward target
             const targetSpeed = rotorActive ? maxRotorThrottle : 0.0;
-            currentRotorSpeed += (targetSpeed - currentRotorSpeed) * Math.min(dt * 2.5, 1.0);
+            currentRotorSpeed += (targetSpeed - currentRotorSpeed) * Math.min(dt * 2.2, 1.0);
+
+            // Blade Coning Angle (Blades flex upward under aerodynamic lift load)
+            const liftLoad = currentRotorSpeed * Math.max(0.0, (collectivePitchDeg + 2.0) / 14.0);
+            heliFlight.bladeConing += (liftLoad * 0.055 - heliFlight.bladeConing) * Math.min(dt * 5.0, 1.0);
+            allBladeFeatherGroups.forEach(item => {
+                item.featherGroup.rotation.z = heliFlight.bladeConing;
+            });
 
             // Smoothly transition solid blades into motion-blurred afterimage trail above 30% RPM
             const blurFactor = THREE.MathUtils.smoothstep(currentRotorSpeed, 0.28, 0.92);
@@ -5481,7 +6501,6 @@
             upperBlurDisc.mat.uniforms.uBlurIntensity.value = blurFactor;
             tailBlurDisc.mat.uniforms.uBlurIntensity.value = blurFactor;
 
-            // Fade solid blade opacity slightly at high RPM so it fuses into the shutter-blur trail without strobing
             const solidBladeOpacity = 1.0 - blurFactor * 0.62;
             MAT.rotorBladeCarbon.opacity = solidBladeOpacity;
             MAT.rotorBladeEdge.opacity = solidBladeOpacity;
@@ -5494,51 +6513,48 @@
                 const angularStep = currentRotorSpeed * dt * 24.0;
                 lowerRotorSpinGroup.rotation.y += angularStep;
                 upperRotorSpinGroup.rotation.y -= angularStep;
-                tailFanSpinGroup.rotation.x += angularStep * 2.6;
+                tailFanSpinGroup.rotation.x += angularStep * 2.6 * heliFlight.tailPusherBoost;
                 const rpmVal = Math.round(currentRotorSpeed * 320);
-                statRpm.textContent = `${rpmVal} RPM (BLUR TRAIL)`;
+                statRpm.textContent = `${rotorMode.toUpperCase()} // ${rpmVal} RPM (${heliFlight.flightPhase})`;
             } else {
-                statRpm.textContent = '0 RPM (STATIC)';
+                statRpm.textContent = 'OFF // 0 RPM (STATIC)';
             }
 
-            // 3A-2. Interactive Helicopter Flight Physics (WASD + R/F Vertical Climb/Descent + Gear Retraction)
-            const fwdInput = (heliFlight.inputs.w ? 1 : 0) - (heliFlight.inputs.s ? 1 : 0);
-            const sideInput = (heliFlight.inputs.d ? 1 : 0) - (heliFlight.inputs.a ? 1 : 0);
-            const vertInput = (heliFlight.inputs.r ? 1 : 0) - (heliFlight.inputs.f ? 1 : 0);
-
-            if (isUiHidden && currentRotorSpeed > 0.35) {
-                // R (Ascend) / F (Descend) adjusts target altitude between 0m (landed) and 35m
-                if (vertInput !== 0) {
-                    heliFlight.targetAlt = THREE.MathUtils.clamp(heliFlight.targetAlt + vertInput * 6.5 * dt, 0.0, 35.0);
-                }
-            } else if (!isUiHidden && currentExplode > 0.05) {
-                // Return to ground level smoothly when inspecting exploded subsystems
-                heliFlight.targetAlt = 0.0;
-            }
-
-            const bobbing = (heliFlight.targetAlt > 0.25 && currentRotorSpeed > 0.4)
-                ? Math.sin(elapsed * 2.2) * 0.06
+            // Realistic Vertical Climb / Sink Rate with Ground Effect (IGE) Cushioning
+            const canLiftOff = currentRotorSpeed > 0.78 && collectivePitchDeg > 4.5;
+            const effectiveTargetAlt = canLiftOff ? heliFlight.targetAlt : 0.0;
+            const hoverBob = (heliFlight.hoverAlt > 0.2 && currentRotorSpeed > 0.7)
+                ? Math.sin(elapsed * 2.1) * 0.045 + Math.cos(elapsed * 3.4) * 0.02
                 : 0.0;
-            const desiredAlt = Math.max(0.0, heliFlight.targetAlt + bobbing);
-            heliFlight.hoverAlt += (desiredAlt - heliFlight.hoverAlt) * Math.min(dt * 3.0, 1.0);
+            const desiredAlt = Math.max(0.0, effectiveTargetAlt + hoverBob);
+            const vertAccel = (desiredAlt - heliFlight.hoverAlt) * 4.2 - heliFlight.vy * 2.8;
+            heliFlight.vy += vertAccel * dt;
+            heliFlight.hoverAlt = Math.max(0.0, heliFlight.hoverAlt + heliFlight.vy * dt);
+            if (heliFlight.hoverAlt <= 0.001 && desiredAlt <= 0.01) {
+                heliFlight.hoverAlt = 0.0;
+                heliFlight.vy = 0.0;
+            }
 
-            // Automatic Landing Gear Retraction when airborne (hoverAlt > 0.45m) & Extension when landing (and assembled)
-            const shouldRetractGear = (heliFlight.hoverAlt > 0.45 && currentExplode < 0.05) ? 1.0 : 0.0;
-            heliFlight.gearRetract += (shouldRetractGear - heliFlight.gearRetract) * Math.min(dt * 3.2, 1.0);
+            // Landing Gear Oleo-Pneumatic Strut Compression (Weight-on-Wheels vs. Airborne Unloading)
+            const weightOnWheels = THREE.MathUtils.clamp(1.0 - (heliFlight.hoverAlt / 0.18) - (liftLoad * 0.35), 0.0, 1.0);
+            heliFlight.gearCompression += (weightOnWheels - heliFlight.gearCompression) * Math.min(dt * 8.0, 1.0);
+            const oleoSink = heliFlight.gearCompression * 0.065;
+            ngPiston.position.y = 0.38 + oleoSink * 0.6;
 
-            // Apply smooth mechanical articulation to Nose Gear, Main Gear & Gear Bay Doors
+            // Automatic Landing Gear Retraction when airborne (hoverAlt > 0.55m) & Extension when landing
+            const shouldRetractGear = (heliFlight.hoverAlt > 0.55 && currentExplode < 0.05) ? 1.0 : 0.0;
+            heliFlight.gearRetract += (shouldRetractGear - heliFlight.gearRetract) * Math.min(dt * 3.0, 1.0);
+
             const gr = THREE.MathUtils.smoothstep(heliFlight.gearRetract, 0.0, 1.0);
-            // Nose wheel folds aft/upward into chin bay
             noseGearRetractPivot.rotation.x = -gr * 1.42;
             noseGearStrutAssembly.scale.setScalar(1.0 - gr * 0.35);
             noseGearDoors.forEach(dp => {
                 dp.rotation.z = -dp.userData.side * gr * 1.15;
             });
 
-            // Port & Starboard main landing gear fold inward & upward into lower hull sponsons
             mainGearRetractPivots.forEach(rp => {
                 const s = rp.userData.side;
-                rp.rotation.z = -s * gr * 1.28;
+                rp.rotation.z = -s * gr * 1.28 - s * heliFlight.gearCompression * 0.035;
                 rp.rotation.x = -gr * 0.32;
             });
             mainGearDoorPivots.forEach(dp => {
@@ -5546,16 +6562,16 @@
                 dp.rotation.z = s * gr * 0.92;
             });
 
-            // Hide wheel chocks as soon as the aircraft lifts off or moves
-            const chockVisible = (heliFlight.hoverAlt < 0.08 && Math.hypot(heliFlight.x, heliFlight.z) < 0.25);
+            // Hide wheel chocks as soon as the aircraft lifts off or moves off the helipad center
+            const chockVisible = (heliFlight.hoverAlt < 0.08 && Math.hypot(heliFlight.x, heliFlight.z) < 0.35);
             groundWheelChocks.forEach(ch => {
                 ch.visible = chockVisible;
             });
 
-            // Steering yaw + lateral strafe & forward/backward thrust (only move horizontally when slightly off ground or spooling)
-            const airborneFactor = THREE.MathUtils.clamp(heliFlight.hoverAlt / 0.35, 0.15, 1.0);
-            const targetYawRate = -sideInput * 1.15 * airborneFactor;
-            heliFlight.yawRate += (targetYawRate - heliFlight.yawRate) * Math.min(dt * 5.0, 1.0);
+            // Steering yaw + lateral strafe & compound forward/backward propulsion
+            const airborneFactor = THREE.MathUtils.clamp(heliFlight.hoverAlt / 0.35, 0.0, 1.0);
+            const targetYawRate = -sideInput * 1.25 * Math.max(0.15, airborneFactor);
+            heliFlight.yawRate += (targetYawRate - heliFlight.yawRate) * Math.min(dt * 4.5, 1.0);
             heliFlight.yaw += heliFlight.yawRate * dt;
 
             const forwardX = Math.sin(heliFlight.yaw);
@@ -5563,39 +6579,200 @@
             const rightX = Math.cos(heliFlight.yaw);
             const rightZ = -Math.sin(heliFlight.yaw);
 
-            const maxSpeed = 14.5 * airborneFactor;
-            const targetVx = (forwardX * fwdInput + rightX * sideInput * 0.65) * maxSpeed;
-            const targetVz = (forwardZ * fwdInput + rightZ * sideInput * 0.65) * maxSpeed;
+            const maxSpeed = 18.0 * airborneFactor;
+            const targetVx = (forwardX * fwdInput + rightX * sideInput * 0.55) * maxSpeed;
+            const targetVz = (forwardZ * fwdInput + rightZ * sideInput * 0.55) * maxSpeed;
 
-            heliFlight.vx += (targetVx - heliFlight.vx) * Math.min(dt * 3.2, 1.0);
-            heliFlight.vz += (targetVz - heliFlight.vz) * Math.min(dt * 3.2, 1.0);
+            const prevVx = heliFlight.vx;
+            const prevVz = heliFlight.vz;
+            heliFlight.vx += (targetVx - heliFlight.vx) * Math.min(dt * 2.6, 1.0);
+            heliFlight.vz += (targetVz - heliFlight.vz) * Math.min(dt * 2.6, 1.0);
+
+            // Forward acceleration & deceleration flare calculation for realistic pitch attitude
+            const fwdSpeed = heliFlight.vx * forwardX + heliFlight.vz * forwardZ;
+            const fwdAccel = ((heliFlight.vx - prevVx) * forwardX + (heliFlight.vz - prevVz) * forwardZ) / Math.max(0.001, dt);
 
             const prevX = heliFlight.x;
             const prevY = heliFlight.y;
             const prevZ = heliFlight.z;
 
-            // Clamp within desert terrain arena (-85m to +85m)
-            heliFlight.x = THREE.MathUtils.clamp(heliFlight.x + heliFlight.vx * dt, -85, 85);
-            heliFlight.z = THREE.MathUtils.clamp(heliFlight.z + heliFlight.vz * dt, -85, 85);
+            heliFlight.x = THREE.MathUtils.clamp(heliFlight.x + heliFlight.vx * dt, -88, 88);
+            heliFlight.z = THREE.MathUtils.clamp(heliFlight.z + heliFlight.vz * dt, -88, 88);
 
             const terrainUnderHeli = isDesertMode ? getDesertHeight(heliFlight.x, heliFlight.z) : 0.0;
-            heliFlight.y = terrainUnderHeli + heliFlight.hoverAlt;
+            heliFlight.y = terrainUnderHeli + heliFlight.hoverAlt - oleoSink * (1.0 - gr);
 
-            // Realistic cyclic pitch & bank roll attitude response
-            const targetPitch = fwdInput * 0.16 * airborneFactor;
-            const targetRoll = -sideInput * 0.22 * airborneFactor;
-            heliFlight.pitch += (targetPitch - heliFlight.pitch) * Math.min(dt * 5.5, 1.0);
-            heliFlight.roll += (targetRoll - heliFlight.roll) * Math.min(dt * 5.5, 1.0);
+            // Realistic Cyclic Pitch, Deceleration Flare & Coordinated Bank Roll
+            // Nose pitches down during forward acceleration, levels somewhat in compound cruise, and pitches nose-up (Flare) when braking!
+            const cruisePitch = fwdInput * 0.13 * airborneFactor;
+            const accelFlarePitch = THREE.MathUtils.clamp(fwdAccel * 0.012, -0.14, 0.12) * airborneFactor;
+            const targetPitch = cruisePitch + accelFlarePitch;
+            const targetRoll = (-sideInput * 0.24 - heliFlight.yawRate * (fwdSpeed / 22.0) * 0.18) * airborneFactor;
+
+            heliFlight.pitch += (targetPitch - heliFlight.pitch) * Math.min(dt * 5.0, 1.0);
+            heliFlight.roll += (targetRoll - heliFlight.roll) * Math.min(dt * 5.0, 1.0);
+
+            // Swashplate cyclic tilt matches aircraft pitch/roll control inputs
+            swashplatesToPitch.forEach(sw => {
+                sw.rotation.x = heliFlight.pitch * 0.65;
+                sw.rotation.z = heliFlight.roll * 0.65;
+            });
 
             helicopterRoot.position.set(heliFlight.x, heliFlight.y, heliFlight.z);
             helicopterRoot.rotation.order = 'YXZ';
             helicopterRoot.rotation.set(heliFlight.pitch, heliFlight.yaw, heliFlight.roll);
 
-            // Keep Camera, OrbitControls Target, Shadow Frustum & Ground Scouring Pad tracking the helicopter
+            // Keep Camera & OrbitControls Target tracking the helicopter's translation
             const deltaMove = new THREE.Vector3(heliFlight.x - prevX, heliFlight.y - prevY, heliFlight.z - prevZ);
             if (deltaMove.lengthSq() > 0.000001) {
                 camera.position.add(deltaMove);
                 controls.target.add(deltaMove);
+            }
+
+            // 3B. Live-Fire 20mm Autocannon, Guided Missiles, Explosions & Immersive Screen Shake
+            if (reloadTimer > 0) {
+                reloadTimer -= dt;
+                if (reloadTimer <= 0) {
+                    rearmAllMissiles();
+                }
+            }
+
+            if (isFiringGun && currentExplode < 0.05) {
+                gunBarrelsSpinGroup.rotation.z += dt * 48.0;
+                gunFireTimer -= dt;
+                if (gunFireTimer <= 0) {
+                    fireCannonRound();
+                    gunFireTimer = 0.055; // ~18 rounds/sec
+                }
+                muzzleFlashGroup.visible = (Math.floor(elapsed * 60) % 2 === 0);
+                muzzleFlashGroup.rotation.z = Math.random() * Math.PI * 2;
+                muzzleLight.intensity = muzzleFlashGroup.visible ? 5.5 : 1.2;
+            } else {
+                muzzleFlashGroup.visible = false;
+                muzzleLight.intensity *= 0.8;
+                camShake.gunBuzz *= Math.exp(-dt * 14.0);
+            }
+
+            // Update 20mm Tracer Projectiles
+            for (let i = activeTracers.length - 1; i >= 0; i--) {
+                const tr = activeTracers[i];
+                tr.age += dt;
+                tr.vy -= 9.8 * dt;
+                tr.mesh.position.x += tr.vx * dt;
+                tr.mesh.position.y += tr.vy * dt;
+                tr.mesh.position.z += tr.vz * dt;
+
+                const gy = isDesertMode ? getDesertHeight(tr.mesh.position.x, tr.mesh.position.z) : 0.0;
+                if (tr.mesh.position.y <= gy || tr.age > 2.2) {
+                    if (tr.mesh.position.y <= gy + 0.5) {
+                        // Bullet sand/rock impact plume & micro-scour
+                        spawnSmokePuff(tr.mesh.position.x, gy + 0.1, tr.mesh.position.z, (Math.random() - 0.5) * 2.5, 2.5 + Math.random() * 3.5, (Math.random() - 0.5) * 2.5, 0.18, 0xd4a373, 0.55);
+                        deformSandRegion(tr.mesh.position.x, tr.mesh.position.z, 0.95, 0.065, 0.35, true);
+                    }
+                    combatFX.remove(tr.mesh);
+                    tr.mesh.geometry.dispose();
+                    tr.mat.dispose();
+                    activeTracers.splice(i, 1);
+                }
+            }
+
+            // Update AGM-179 Guided Missiles
+            for (let i = activeMissiles.length - 1; i >= 0; i--) {
+                const msl = activeMissiles[i];
+                msl.age += dt;
+                // Rocket motor high-thrust acceleration
+                const accel = msl.age < 1.8 ? 48.0 : 12.0;
+                msl.vx += msl.dir.x * accel * dt;
+                msl.vy += msl.dir.y * accel * dt - 3.2 * dt;
+                msl.vz += msl.dir.z * accel * dt;
+
+                msl.mesh.position.x += msl.vx * dt;
+                msl.mesh.position.y += msl.vy * dt;
+                msl.mesh.position.z += msl.vz * dt;
+
+                const velVec = new THREE.Vector3(msl.vx, msl.vy, msl.vz).normalize();
+                msl.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), velVec);
+                msl.flameMesh.scale.setScalar(0.85 + Math.random() * 0.35);
+
+                // Dense rocket exhaust smoke trail
+                msl.smokeAccum += dt;
+                if (msl.smokeAccum > 0.018) {
+                    msl.smokeAccum = 0;
+                    spawnSmokePuff(
+                        msl.mesh.position.x - velVec.x * 0.65,
+                        msl.mesh.position.y - velVec.y * 0.65,
+                        msl.mesh.position.z - velVec.z * 0.65,
+                        (Math.random() - 0.5) * 1.2,
+                        0.4 + Math.random() * 0.8,
+                        (Math.random() - 0.5) * 1.2,
+                        0.22,
+                        0xe2e8f0,
+                        1.25
+                    );
+                }
+
+                const gy = isDesertMode ? getDesertHeight(msl.mesh.position.x, msl.mesh.position.z) : 0.0;
+                if (msl.mesh.position.y <= gy + 0.15 || msl.age > 4.5 || Math.hypot(msl.mesh.position.x, msl.mesh.position.z) > 105) {
+                    createExplosionAt(msl.mesh.position.x, Math.max(gy, msl.mesh.position.y), msl.mesh.position.z, 1.25);
+                    combatFX.remove(msl.mesh);
+                    activeMissiles.splice(i, 1);
+                }
+            }
+
+            // Update Explosions & Smoke Plumes
+            for (let i = activeExplosions.length - 1; i >= 0; i--) {
+                const ex = activeExplosions[i];
+                ex.age += dt;
+                const p = ex.age / ex.maxLife;
+                if (p >= 1.0) {
+                    combatFX.remove(ex.coreMesh);
+                    combatFX.remove(ex.shellMesh);
+                    combatFX.remove(ex.ringMesh);
+                    combatFX.remove(ex.light);
+                    activeExplosions.splice(i, 1);
+                } else {
+                    ex.coreMesh.scale.setScalar(1.0 + p * 2.8);
+                    ex.coreMat.opacity = Math.max(0, 1.0 - p * 1.35);
+                    ex.shellMesh.scale.setScalar(1.0 + p * 4.2);
+                    ex.shellMat.opacity = Math.max(0, (1.0 - p) * 0.85);
+                    ex.ringMesh.scale.setScalar(1.0 + p * 9.5);
+                    ex.ringMat.opacity = Math.max(0, (1.0 - p) * 0.9);
+                    ex.light.intensity = Math.max(0, 18.0 * ex.scale * (1.0 - p));
+                }
+            }
+
+            for (let i = smokeParticles.length - 1; i >= 0; i--) {
+                const sp = smokeParticles[i];
+                sp.age += dt;
+                const p = sp.age / sp.maxLife;
+                if (p >= 1.0) {
+                    combatFX.remove(sp.mesh);
+                    sp.mesh.geometry.dispose();
+                    sp.mat.dispose();
+                    smokeParticles.splice(i, 1);
+                } else {
+                    sp.vy -= 3.8 * dt;
+                    sp.mesh.position.x += sp.vx * dt;
+                    sp.mesh.position.y = Math.max(0.05, sp.mesh.position.y + sp.vy * dt);
+                    sp.mesh.position.z += sp.vz * dt;
+                    sp.mesh.scale.setScalar(1.0 + p * 2.6);
+                    sp.mat.opacity = (1.0 - p) * 0.58;
+                }
+            }
+
+            // Compute & Apply Immersive Camera Shake (Weapon Recoil + Blast Waves + Extreme Rotor Turbulence)
+            const aeroBuffet = (currentRotorSpeed > 0.85 && heliFlight.hoverAlt < 2.5)
+                ? 0.04 * (1.0 - heliFlight.hoverAlt / 2.5)
+                : 0.0;
+            camShake.trauma = Math.max(0.0, camShake.trauma - dt * 1.75);
+            const totalShake = Math.min(1.0, camShake.trauma * camShake.trauma + camShake.gunBuzz * 0.14 + aeroBuffet);
+
+            if (totalShake > 0.001) {
+                const sx = (Math.sin(elapsed * 58.0) * 0.6 + (Math.random() - 0.5) * 0.8) * totalShake * 0.28;
+                const sy = (Math.cos(elapsed * 67.0) * 0.6 + (Math.random() - 0.5) * 0.8) * totalShake * 0.28;
+                const sz = (Math.sin(elapsed * 49.0) * 0.6 + (Math.random() - 0.5) * 0.8) * totalShake * 0.28;
+                camShake.prevApplied.set(sx, sy, sz);
+                camera.position.add(camShake.prevApplied);
             }
 
             // Apply Mobile Gyroscope Camera Orbit if enabled (smoothed, relative, gimbal-lock safe)
@@ -5606,7 +6783,6 @@
                     gyroState.smPitch = gyroState.prevPitch = ang.pitch;
                     gyroState.needsSync = false;
                 } else {
-                    // Low-pass filter (wrap-aware on yaw) to remove sensor jitter
                     const k = 1.0 - Math.exp(-dt * 14.0);
                     gyroState.smYaw += wrapPi(ang.yaw - gyroState.smYaw) * k;
                     gyroState.smPitch += (ang.pitch - gyroState.smPitch) * k;
@@ -5617,7 +6793,6 @@
                 gyroState.prevYaw = gyroState.smYaw;
                 gyroState.prevPitch = gyroState.smPitch;
 
-                // Only move the camera while flight mode is active; otherwise keep tracking silently (no jump later)
                 if (isUiHidden && (Math.abs(dYaw) > 1e-5 || Math.abs(dPitch) > 1e-5)) {
                     const offset = camera.position.clone().sub(controls.target);
                     const spherical = new THREE.Spherical().setFromVector3(offset);
@@ -5630,12 +6805,13 @@
 
             // Update Flight HUD Telemetry readout
             if (isUiHidden) {
-                const groundSpdKt = Math.round(Math.hypot(heliFlight.vx, heliFlight.vz) * 3.8);
+                const groundSpdKt = Math.round(horizSpeed * 3.8);
                 const altFt = Math.round(heliFlight.hoverAlt * 10);
                 const gearStateStr = heliFlight.gearRetract > 0.85 ? 'UP' : (heliFlight.gearRetract < 0.15 ? 'DOWN' : 'TRANSIT');
+                const availMsl = mountedMissiles.filter(m => m.available).length;
                 const hudEl = document.getElementById('flight-hud-telemetry');
                 if (hudEl) {
-                    hudEl.textContent = `SPD: ${groundSpdKt} KT | ALT: ${altFt} FT | GEAR: ${gearStateStr}`;
+                    hudEl.textContent = `${heliFlight.flightPhase} | SPD: ${groundSpdKt} KT | ALT: ${altFt} FT | GEAR: ${gearStateStr} | MSL: ${availMsl}/4`;
                 }
             }
 
@@ -5649,12 +6825,11 @@
             desertAoPad.material.opacity = groundEffectAtten;
             aoPad.position.set(heliFlight.x, 0.005, heliFlight.z - 0.5);
 
-            // 3B. Update Per-Grain Aerodynamic Sand Physics & Scouring Ring in Desert Mode
+            // 3C. Update Per-Grain Aerodynamic Sand Physics & Scouring Ring in Desert Mode
             if (isDesertMode) {
                 sandShaderMat.uniforms.uTime.value = elapsed;
                 updateAerodynamicSandPhysics(dt, elapsed);
 
-                // Animate ground scouring wave ring directly under rotor downwash (attenuates with altitude)
                 const downwashFactor = currentRotorSpeed * Math.max(0.15, (collectivePitchDeg + 5.5) / 11.5) * aeroForceMultiplier * groundEffectAtten;
                 scourRingMesh.position.set(heliFlight.x, terrainUnderHeli + 0.02, heliFlight.z - 0.02);
                 scourRingMesh.rotation.z = elapsed * 0.45 * downwashFactor;
@@ -5663,9 +6838,9 @@
                 scourRingMat.opacity = Math.min(0.82, (0.12 + downwashFactor * 0.48) * groundEffectAtten);
 
                 if (statSand) {
-                    statSand.textContent = downwashFactor > 0.35
-                        ? '100,000 GRAINS (BROWNOUT VORTEX)'
-                        : (ambientWindStrength > 0.15 ? '100,000 GRAINS (WIND DRIFT)' : '100,000 GRAINS (SETTLED)');
+                    statSand.textContent = downwashFactor > 0.45
+                        ? `SCOUR ACTIVE // -${maxSandScourDepth.toFixed(2)}m`
+                        : (ambientWindStrength > 0.15 ? '100K GRAINS // WIND DRIFT' : '100K GRAINS // SETTLED');
                 }
             }
 

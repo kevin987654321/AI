@@ -1,8 +1,14 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="XH-99 3D">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0f172a">
     <title>FUTURE HELICOPTER XH-99 // 3D 寫實工程建模與擴散分離展示</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
@@ -15,26 +21,42 @@
             box-sizing: border-box;
             user-select: none;
             -webkit-user-select: none;
+            -webkit-touch-callout: none;
         }
-        body, html {
+        html, body {
+            position: fixed;
+            inset: 0;
             margin: 0;
             padding: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            min-height: -webkit-fill-available;
             overflow: hidden;
-            background-color: #f8fafc;
+            background-color: #0f172a;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             color: #0f172a;
+            overscroll-behavior: none;
         }
         .mono {
             font-family: 'JetBrains Mono', monospace;
         }
         #canvas-container {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
             z-index: 1;
+            background-color: #dfc4a4;
+        }
+        #canvas-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
         }
         /* Glassmorphic Technical Panels */
         .tech-panel {
@@ -1138,10 +1160,13 @@
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.06;
-        controls.target.set(0, 2.2, 0.2);
+        // True geometric & visual center of the XH-99 helicopter
+        const HELI_CENTER_OFFSET = new THREE.Vector3(0, 1.85, -0.20);
+        controls.target.copy(HELI_CENTER_OFFSET);
         controls.minDistance = 2.2;
-        controls.maxDistance = 42;
-        controls.maxPolarAngle = Math.PI * 0.495;
+        controls.maxDistance = 48;
+        controls.maxPolarAngle = Math.PI * 0.492;
+        let lockOrbitToHeliCenter = true;
 
         const hemiLight = new THREE.HemisphereLight(0xfff7ed, 0xb4834e, 1.45);
         hemiLight.position.set(0, 25, 0);
@@ -1276,10 +1301,11 @@
         const gridSide = terrainSegs + 1;
         const sandDeformGrid = new Float32Array(gridSide * gridSide);
         let maxSandScourDepth = 0.0;
+        const HELIPAD_OUTER_RADIUS = 14.2;
 
         /**
          * Base analytical terrain height combining:
-         * 1. Flat compacted Tactical Helipad plateau at origin (r < 7.8m) with sloped blast embankment
+         * 1. Recessed foundation basin (r < 15.2m) so the Large Circular Helipad sits cleanly above the sand bed without ever being buried
          * 2. Winding desert floor dunes & eolian ripples in the canyon corridor
          * 3. Towering Stratified Sandstone Mountains, Mesas & Buttes (層狀砂岩山脈與方山台地) surrounding the arena
          */
@@ -1287,8 +1313,12 @@
             const r2 = x * x + z * z;
             const r = Math.sqrt(r2);
 
-            // Helipad flat zone mask (0 inside r < 7.8m, smoothly transitions to 1 at r = 15.5m)
-            const padMask = Math.min(1.0, Math.max(0.0, (r - 7.8) / 7.7));
+            // Depress sand mesh underneath the large circular helipad (r < 14.5m) so sand NEVER pokes through the pad
+            const underPadFactor = 1.0 - Math.min(1.0, Math.max(0.0, (r - 13.8) / 3.2));
+            const padRecess = -0.36 * underPadFactor * underPadFactor;
+
+            // Helipad flat perimeter transition zone (0 inside r < 16.0m, smoothly transitions to 1 at r = 24.5m)
+            const padMask = Math.min(1.0, Math.max(0.0, (r - 16.0) / 8.5));
             const smoothPadMask = padMask * padMask * (3.0 - 2.0 * padMask);
 
             // 1. Valley Floor Barchan Dunes & Eolian Ripples
@@ -1304,8 +1334,8 @@
             const microRipple = Math.pow(0.5 + 0.5 * Math.sin(ripplePhase), 1.6) * 0.022;
             const duneFloor = (sharpCrest1 + sharpCrest2 + medUndulation + microRipple) * smoothPadMask;
 
-            // 2. Stratified Sandstone Mountain Canyon & Stepped Mesas (r > 22m)
-            const canyonMask = Math.min(1.0, Math.max(0.0, (r - 22.0) / 18.0));
+            // 2. Stratified Sandstone Mountain Canyon & Stepped Mesas (r > 26m)
+            const canyonMask = Math.min(1.0, Math.max(0.0, (r - 26.0) / 18.0));
             const smoothCanyon = canyonMask * canyonMask * (3.0 - 2.0 * canyonMask);
 
             // Carve a navigable flight canyon corridor along the NE-SW / N-S axis while raising massive sandstone mountains on flanks
@@ -1316,10 +1346,10 @@
                                     + 0.35 * Math.cos(z * 0.061 - Math.sin(x * 0.045) * 1.4);
 
             // Discrete standalone Sandstone Buttes / Pillars at iconic canyon locations
-            const butte1 = Math.exp(-((x - 36) * (x - 36) + (z + 28) * (z + 28)) / 190.0) * 16.5;
-            const butte2 = Math.exp(-((x + 42) * (x + 42) + (z - 26) * (z - 26)) / 220.0) * 19.0;
-            const butte3 = Math.exp(-((x + 34) * (x + 34) + (z + 38) * (z + 38)) / 240.0) * 17.5;
-            const butte4 = Math.exp(-((x - 44) * (x - 44) + (z - 34) * (z - 34)) / 210.0) * 15.5;
+            const butte1 = Math.exp(-((x - 38) * (x - 38) + (z + 30) * (z + 30)) / 190.0) * 16.5;
+            const butte2 = Math.exp(-((x + 44) * (x + 44) + (z - 28) * (z - 28)) / 220.0) * 19.0;
+            const butte3 = Math.exp(-((x + 36) * (x + 36) + (z + 40) * (z + 40)) / 240.0) * 17.5;
+            const butte4 = Math.exp(-((x - 46) * (x - 46) + (z - 36) * (z - 36)) / 210.0) * 15.5;
 
             const rawMountain = (smoothCanyon * (corridor1 * 0.72 + corridor2 * 0.48) * ridgeNoise * 16.0)
                               + (butte1 + butte2 + butte3 + butte4) * smoothPadMask;
@@ -1338,7 +1368,7 @@
                 terracedMountain = stepped * strataStep + cragDetail;
             }
 
-            return duneFloor + terracedMountain;
+            return padRecess + duneFloor + terracedMountain;
         }
 
         function sampleSandDeform(x, z) {
@@ -1359,16 +1389,29 @@
 
         function getSandErodibility(x, z) {
             const r = Math.hypot(x, z);
-            if (r < 8.4) return 0.0; // Helipad concrete foundation is non-erodible
+            if (r < HELIPAD_OUTER_RADIUS + 2.2) return 0.0; // Large circular helipad & apron are non-erodible concrete
             const baseH = getBaseDesertHeight(x, z);
             if (baseH > 2.4) return 0.0; // Solid sandstone rock cliffs are non-erodible by airflow
-            const padBlend = Math.min(1.0, (r - 8.4) / 3.2);
+            const padBlend = Math.min(1.0, (r - (HELIPAD_OUTER_RADIUS + 2.2)) / 3.5);
             const rockBlend = Math.min(1.0, Math.max(0.0, (2.4 - baseH) / 1.4));
             return padBlend * rockBlend;
         }
 
+        /**
+         * Returns the exact physical surface height (including the raised circular helipad deck at r <= 14.2m)
+         * so the helicopter landing gear and all 100,000 sand grains rest cleanly on top of the circular helipad.
+         */
         function getDesertHeight(x, z) {
-            return getBaseDesertHeight(x, z) + sampleSandDeform(x, z);
+            const r = Math.hypot(x, z);
+            const sandH = getBaseDesertHeight(x, z) + sampleSandDeform(x, z);
+            if (r <= HELIPAD_OUTER_RADIUS) {
+                if (r <= 13.2) return 0.0; // Flat elevated circular helipad top deck
+                // Sloped concrete blast apron from r = 13.2m (y = 0.0) down to r = 14.2m
+                const t = (r - 13.2) / (HELIPAD_OUTER_RADIUS - 13.2);
+                const padSlopeY = -0.28 * t;
+                return Math.max(sandH, padSlopeY);
+            }
+            return sandH;
         }
 
         // Realistic Rayleigh/Mie Atmospheric Desert Sky Dome & Distant Horizon Sandstone Mesa Silhouettes
@@ -1571,47 +1614,55 @@
         desertGroup.add(desertTerrainMesh);
 
         // ============================================================================
-        // 3B. STARTING POINT TACTICAL HELIPAD (PAD-01) AT ORIGIN (0, 0, 0)
+        // 3B. LARGE ELEVATED CIRCULAR HELIPAD (28M DIAMETER PAD-01) AT ORIGIN (0, 0, 0)
         // ============================================================================
         function createHelipadDeckTexture() {
-            const size = 1024;
+            const size = 2048;
             const canvas = document.createElement('canvas');
             canvas.width = canvas.height = size;
             const ctx = canvas.getContext('2d');
             const cx = size / 2, cy = size / 2;
 
-            // Dark tactical weathered non-skid concrete & steel deck
-            ctx.fillStyle = '#293038';
+            // High-contrast dark tactical non-skid concrete deck
+            ctx.fillStyle = '#262d35';
             ctx.fillRect(0, 0, size, size);
 
-            // Micro-asphalt aggregate noise
-            for (let i = 0; i < 24000; i++) {
+            // Concentric circular concrete troweling & micro-aggregate grain
+            for (let i = 0; i < 42000; i++) {
                 const x = Math.random() * size;
                 const y = Math.random() * size;
-                const v = 38 + (Math.random() - 0.5) * 18;
+                const v = 35 + (Math.random() - 0.5) * 16;
                 ctx.fillStyle = `rgb(${v},${v + 3},${v + 6})`;
                 ctx.fillRect(x, y, 2, 2);
             }
 
-            // Expansion joint grid lines
+            // Radial & concentric concrete expansion joints
             ctx.strokeStyle = 'rgba(15, 23, 42, 0.65)';
-            ctx.lineWidth = 3;
-            for (let g = 128; g < size; g += 128) {
-                ctx.beginPath(); ctx.moveTo(g, 0); ctx.lineTo(g, size); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(0, g); ctx.lineTo(size, g); ctx.stroke();
+            ctx.lineWidth = 4;
+            for (let rRing = 240; rRing <= 960; rRing += 240) {
+                ctx.beginPath();
+                ctx.arc(cx, cy, rRing, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            for (let a = 0; a < 16; a++) {
+                const ang = (a / 16) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.moveTo(cx + Math.cos(ang) * 240, cy + Math.sin(ang) * 240);
+                ctx.lineTo(cx + Math.cos(ang) * 980, cy + Math.sin(ang) * 980);
+                ctx.stroke();
             }
 
-            // Outer yellow/black hazard border ring
+            // Outer yellow/black hazard safety curb ring
             ctx.save();
             ctx.beginPath();
-            ctx.arc(cx, cy, 468, 0, Math.PI * 2);
-            ctx.arc(cx, cy, 434, 0, Math.PI * 2, true);
+            ctx.arc(cx, cy, 985, 0, Math.PI * 2);
+            ctx.arc(cx, cy, 925, 0, Math.PI * 2, true);
             ctx.clip();
             ctx.fillStyle = '#eab308';
             ctx.fillRect(0, 0, size, size);
             ctx.strokeStyle = '#0f172a';
-            ctx.lineWidth = 24;
-            for (let s = -size; s < size * 2; s += 48) {
+            ctx.lineWidth = 36;
+            for (let s = -size; s < size * 2; s += 72) {
                 ctx.beginPath();
                 ctx.moveTo(s, 0);
                 ctx.lineTo(s - size, size);
@@ -1619,44 +1670,59 @@
             }
             ctx.restore();
 
-            // Aiming circle & white/yellow tactical markings
+            // Outer White Touchdown & Lift-Off (TLOF) Perimeter Ring
             ctx.strokeStyle = '#f8fafc';
-            ctx.lineWidth = 14;
-            ctx.setLineDash([42, 22]);
+            ctx.lineWidth = 18;
             ctx.beginPath();
-            ctx.arc(cx, cy, 355, 0, Math.PI * 2);
+            ctx.arc(cx, cy, 860, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Dashed Rotor Clearance Circle (12m Diameter Rotor Safety Ring)
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 22;
+            ctx.setLineDash([76, 38]);
+            ctx.beginPath();
+            ctx.arc(cx, cy, 670, 0, Math.PI * 2);
             ctx.stroke();
             ctx.setLineDash([]);
 
-            ctx.strokeStyle = '#facc15';
-            ctx.lineWidth = 8;
+            // Inner Aiming Circle
+            ctx.strokeStyle = '#f8fafc';
+            ctx.lineWidth = 14;
             ctx.beginPath();
-            ctx.arc(cx, cy, 265, 0, Math.PI * 2);
+            ctx.arc(cx, cy, 430, 0, Math.PI * 2);
             ctx.stroke();
 
-            // Central Helipad "H" Marking
+            // Cardinal Compass Approach Chevrons (N / E / S / W)
+            for (let c = 0; c < 4; c++) {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(c * Math.PI / 2);
+                ctx.fillStyle = '#facc15';
+                ctx.beginPath();
+                ctx.moveTo(0, -830);
+                ctx.lineTo(-42, -760);
+                ctx.lineTo(42, -760);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // Giant Central Helipad "H" Marking
             ctx.fillStyle = '#f8fafc';
-            const hW = 190, hH = 260, barT = 42;
+            const hW = 340, hH = 460, barT = 72;
             ctx.fillRect(cx - hW / 2, cy - hH / 2, barT, hH);
             ctx.fillRect(cx + hW / 2 - barT, cy - hH / 2, barT, hH);
             ctx.fillRect(cx - hW / 2, cy - barT / 2, hW, barT);
 
-            // Stencils: "XH-99 // TACTICAL PAD-01" & "MAX GROSS 14T"
+            // Stencils: "XH-99 // TACTICAL HELIPAD-01" & "MAX GROSS 14.5T // 28M DIA"
             ctx.fillStyle = '#facc15';
-            ctx.font = '800 30px "JetBrains Mono", monospace';
+            ctx.font = '800 52px "JetBrains Mono", monospace';
             ctx.textAlign = 'center';
-            ctx.fillText('XH-99 // TACTICAL PAD-01', cx, cy + 215);
-            ctx.fillStyle = '#94a3b8';
-            ctx.font = '700 22px "JetBrains Mono", monospace';
-            ctx.fillText('COMPOUND ROTORCRAFT TEST FACILITY', cx, cy - 195);
-
-            // Subtle blown sand dust accumulation around the outer perimeter
-            const dustGrad = ctx.createRadialGradient(cx, cy, 320, cx, cy, 510);
-            dustGrad.addColorStop(0, 'rgba(210, 168, 114, 0.0)');
-            dustGrad.addColorStop(0.75, 'rgba(210, 168, 114, 0.18)');
-            dustGrad.addColorStop(1, 'rgba(202, 158, 104, 0.55)');
-            ctx.fillStyle = dustGrad;
-            ctx.fillRect(0, 0, size, size);
+            ctx.fillText('XH-99 // TACTICAL PAD-01', cx, cy + 545);
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = '700 38px "JetBrains Mono", monospace';
+            ctx.fillText('COMPOUND ROTORCRAFT FACILITY // 28M', cx, cy - 505);
 
             const tex = new THREE.CanvasTexture(canvas);
             tex.anisotropy = 8;
@@ -1669,8 +1735,10 @@
         const padTex = createHelipadDeckTexture();
         const padDeckMat = new THREE.MeshStandardMaterial({
             map: padTex,
-            roughness: 0.72,
-            metalness: 0.15
+            roughness: 0.68,
+            metalness: 0.16,
+            polygonOffset: true,
+            polygonOffsetFactor: -2
         });
         const padApronMat = new THREE.MeshStandardMaterial({
             color: 0x3b424c,
@@ -1678,36 +1746,42 @@
             metalness: 0.25
         });
 
-        // Octagonal blast-deflector concrete base apron
-        const padApronMesh = new THREE.Mesh(new THREE.CylinderGeometry(6.9, 8.2, 0.16, 8), padApronMat);
-        padApronMesh.position.set(0, -0.075, 0);
-        padApronMesh.rotation.y = Math.PI / 8;
+        // Large Circular Sloped Blast-Deflector Concrete Foundation (Radius 13.2m top -> 15.0m base, 64 radial segments for a true smooth circle)
+        const padApronMesh = new THREE.Mesh(new THREE.CylinderGeometry(13.25, 15.1, 0.56, 64), padApronMat);
+        padApronMesh.position.set(0, -0.285, 0);
         padApronMesh.receiveShadow = true;
         helipadGroup.add(padApronMesh);
 
-        // Main circular high-resolution helipad top deck (flush at y = 0.004)
-        const padTopMesh = new THREE.Mesh(new THREE.CylinderGeometry(6.65, 6.80, 0.04, 48), padDeckMat);
-        padTopMesh.position.set(0, -0.016, 0);
+        // Main 26.4m Diameter Circular High-Resolution Helipad Top Deck (Top surface flush at y = 0.0)
+        const padTopMesh = new THREE.Mesh(new THREE.CylinderGeometry(13.2, 13.25, 0.12, 64), padDeckMat);
+        padTopMesh.position.set(0, -0.06, 0);
         padTopMesh.receiveShadow = true;
         helipadGroup.add(padTopMesh);
 
-        // 8 Perimeter Inset Helipad Lights (Alternating Green & Amber LED Beacons) + Tie-Down Padeyes
+        // Outer Raised Concrete Perimeter Curb Ring
+        const padCurbRing = new THREE.Mesh(new THREE.TorusGeometry(13.15, 0.10, 12, 64), padApronMat);
+        padCurbRing.rotation.x = Math.PI / 2;
+        padCurbRing.position.set(0, 0.01, 0);
+        padCurbRing.receiveShadow = true;
+        helipadGroup.add(padCurbRing);
+
+        // 16 Perimeter Inset Helipad Lights (Alternating Green & Amber LED Beacons around the 26m circle)
         const padLightMatGreen = new THREE.MeshBasicMaterial({ color: 0x10b981 });
         const padLightMatAmber = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
-        for (let i = 0; i < 8; i++) {
-            const ang = (i / 8) * Math.PI * 2 + Math.PI / 8;
-            const lx = Math.cos(ang) * 6.55;
-            const lz = Math.sin(ang) * 6.55;
+        for (let i = 0; i < 16; i++) {
+            const ang = (i / 16) * Math.PI * 2;
+            const lx = Math.cos(ang) * 12.85;
+            const lz = Math.sin(ang) * 12.85;
 
-            const fixture = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.20, 0.05, 16), padApronMat);
-            fixture.position.set(lx, 0.015, lz);
+            const fixture = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 0.06, 16), padApronMat);
+            fixture.position.set(lx, 0.025, lz);
             helipadGroup.add(fixture);
 
             const lens = new THREE.Mesh(
-                new THREE.SphereGeometry(0.09, 12, 8),
+                new THREE.SphereGeometry(0.10, 12, 8),
                 i % 2 === 0 ? padLightMatGreen : padLightMatAmber
             );
-            lens.position.set(lx, 0.035, lz);
+            lens.position.set(lx, 0.055, lz);
             helipadGroup.add(lens);
         }
 
@@ -1777,25 +1851,26 @@
         const desertRockMat = new THREE.MeshStandardMaterial({
             map: sandstoneTex,
             bumpMap: sandstoneTex,
-            bumpScale: 0.04,
-            roughness: 0.90,
-            metalness: 0.04
+            bumpScale: 0.035,
+            roughness: 0.88,
+            metalness: 0.02
         });
 
-        // Wind-Sculpted Stratified Sandstone Yardangs, Outcrops, Sand Aprons & Desert Pebbles
+        // Wind-Sculpted Stratified Sandstone Outcrops (Cleanly embedded with upward-biased normals to prevent black underside shadow artifacts)
         const rockColliderList = [];
-        for (let r = 0; r < 52; r++) {
+        for (let r = 0; r < 48; r++) {
             const angle = (r * 2.39996) + (r % 4) * 0.18;
-            const dist = 5.4 + (r / 52) * 44.0 + Math.sin(r * 2.7) * 2.2;
+            // Start rocks outside the 28m diameter circular helipad (r >= 17.5m)
+            const dist = 17.5 + (r / 48) * 38.0 + Math.sin(r * 2.7) * 2.0;
             const rx = Math.cos(angle) * dist;
             const rz = Math.sin(angle) * dist;
-            const ry = getDesertHeight(rx, rz);
+            const ry = getBaseDesertHeight(rx, rz);
 
-            const scaleX = 0.28 + ((r * 19) % 12) * 0.11;
-            const scaleY = scaleX * (0.28 + ((r * 7) % 5) * 0.085);
-            const scaleZ = scaleX * (0.65 + ((r * 13) % 6) * 0.14);
+            const scaleX = 0.35 + ((r * 19) % 12) * 0.12;
+            const scaleY = scaleX * (0.34 + ((r * 7) % 5) * 0.085);
+            const scaleZ = scaleX * (0.68 + ((r * 13) % 6) * 0.14);
 
-            // High-resolution stratified sandstone geometry with flat wind-sheared terraces
+            // Stratified sandstone geometry without sharp bottom clamping or intersecting cones
             const rockGeo = new THREE.IcosahedronGeometry(1.0, 2);
             const rPos = rockGeo.attributes.position;
             for (let vi = 0; vi < rPos.count; vi++) {
@@ -1803,34 +1878,37 @@
                 let vy = rPos.getY(vi);
                 let vz = rPos.getZ(vi);
 
-                // Flatten bottom and create stepped horizontal sedimentary strata terraces
-                if (vy < -0.35) vy = -0.35;
-                const strata = Math.sin(vy * 9.5 + r) * 0.085;
-                const facet = 1.0 + 0.16 * Math.sin(vx * 3.8 + r) * Math.cos(vz * 3.4 - r) + strata;
-                // Terrace stepping on upper faces
-                const terracedY = vy - Math.sin(vy * 6.0) * 0.06;
+                // Smoothly taper lower half instead of hard-clamping so bottom normals never invert or self-shadow
+                if (vy < 0.0) {
+                    vy *= 0.45;
+                }
+                const strata = Math.sin(vy * 8.5 + r) * 0.075;
+                const facet = 1.0 + 0.14 * Math.sin(vx * 3.8 + r) * Math.cos(vz * 3.4 - r) + strata;
+                const terracedY = vy - Math.sin(vy * 5.5) * 0.05;
 
                 rPos.setXYZ(vi, vx * scaleX * facet, terracedY * scaleY, vz * scaleZ * facet);
             }
             rockGeo.computeVertexNormals();
 
+            // Bias lower vertex normals slightly upward toward the terrain normal so the base of the rock never shades pitch-black
+            const rNorm = rockGeo.attributes.normal;
+            for (let vi = 0; vi < rNorm.count; vi++) {
+                const nx = rNorm.getX(vi);
+                const ny = Math.max(0.28, rNorm.getY(vi));
+                const nz = rNorm.getZ(vi);
+                const len = Math.hypot(nx, ny, nz) || 1.0;
+                rNorm.setXYZ(vi, nx / len, ny / len, nz / len);
+            }
+
             const rockMesh = new THREE.Mesh(rockGeo, desertRockMat);
-            rockMesh.position.set(rx, ry + scaleY * 0.22, rz);
-            rockMesh.rotation.set((r % 3 - 1) * 0.06, angle * 1.3, ((r + 1) % 3 - 1) * 0.05);
-            rockMesh.castShadow = true;
-            rockMesh.receiveShadow = true;
+            rockMesh.position.set(rx, ry + scaleY * 0.18, rz);
+            rockMesh.rotation.set(0, angle * 1.3, 0);
+            // Only large boulders cast shadows; disable self-shadowing on small rocks to eliminate dark shadow seams at their base
+            rockMesh.castShadow = scaleX > 0.85;
+            rockMesh.receiveShadow = false;
             desertGroup.add(rockMesh);
 
-            // Wind-drifted sand apron mound around the base of larger sandstone outcrops
-            if (scaleX > 0.55) {
-                const apronGeo = new THREE.ConeGeometry(scaleX * 1.45, scaleY * 0.48, 18);
-                const apronMesh = new THREE.Mesh(apronGeo, desertTerrainMat);
-                apronMesh.scale.set(1.0, 1.0, scaleZ / scaleX * 1.25);
-                apronMesh.position.set(rx, ry + scaleY * 0.12, rz);
-                apronMesh.rotation.y = angle * 1.3;
-                apronMesh.receiveShadow = true;
-                desertGroup.add(apronMesh);
-
+            if (scaleX > 0.65) {
                 rockColliderList.push({ x: rx, y: ry + scaleY * 0.35, z: rz, r: scaleX * 1.15 });
             }
         }
@@ -5757,7 +5835,11 @@
                 }
             });
 
-            const focusTarget = sys.userData.localCenter.clone().add(sys.position);
+            // Only shift orbit pivot away from the helicopter's central point when the model is in Exploded View
+            lockOrbitToHeliCenter = (currentExplode < 0.15);
+            const focusTarget = lockOrbitToHeliCenter
+                ? helicopterRoot.position.clone().add(HELI_CENTER_OFFSET)
+                : sys.userData.localCenter.clone().add(sys.position).add(helicopterRoot.position);
             camAnim = {
                 startPos: camera.position.clone(),
                 endPos: camera.position.clone(),
@@ -5767,16 +5849,16 @@
             };
         }
 
-        // Camera View Presets Matching Reference Sheet
+        // Camera View Presets Matching Reference Sheet (Main views pivot around the exact center of the helicopter)
         const CAM_PRESETS = {
-            front34: { pos: new THREE.Vector3(11.5, 3.6, 12.8), target: new THREE.Vector3(0, 2.2, 0.2), label: '3/4 FRONT VIEW' },
-            side:    { pos: new THREE.Vector3(16.8, 2.4, -0.4), target: new THREE.Vector3(0, 2.1, -0.4), label: 'SIDE VIEW' },
-            front:   { pos: new THREE.Vector3(0.0, 2.5, 16.5),  target: new THREE.Vector3(0, 2.2, 0.0),  label: 'FRONT VIEW' },
-            rear34:  { pos: new THREE.Vector3(11.2, 3.5, -13.2), target: new THREE.Vector3(0, 2.1, -1.0), label: 'REAR-QUARTER VIEW' },
-            rotor:   { pos: new THREE.Vector3(3.8, 4.35, 3.8),  target: new THREE.Vector3(0, 4.05, -0.02), label: 'ROTOR SYSTEM' },
-            flir:    { pos: new THREE.Vector3(2.8, 2.05, 5.2),  target: new THREE.Vector3(0, 1.65, 2.2),  label: 'FLIGHT DECK & FLIR' },
-            tail:    { pos: new THREE.Vector3(4.8, 2.3, -8.2),  target: new THREE.Vector3(0, 1.75, -4.8), label: 'PROPULSION TAIL' },
-            gear:    { pos: new THREE.Vector3(3.6, 0.95, 1.8),  target: new THREE.Vector3(0.6, 0.55, 0.8), label: 'LANDING GEAR' }
+            front34: { pos: new THREE.Vector3(11.5, 3.6, 12.8), target: HELI_CENTER_OFFSET.clone(), centerLock: true, label: '3/4 FRONT VIEW' },
+            side:    { pos: new THREE.Vector3(16.8, 2.2, -0.2), target: HELI_CENTER_OFFSET.clone(), centerLock: true, label: 'SIDE VIEW' },
+            front:   { pos: new THREE.Vector3(0.0, 2.3, 16.5),  target: HELI_CENTER_OFFSET.clone(), centerLock: true, label: 'FRONT VIEW' },
+            rear34:  { pos: new THREE.Vector3(11.2, 3.5, -13.2), target: HELI_CENTER_OFFSET.clone(), centerLock: true, label: 'REAR-QUARTER VIEW' },
+            rotor:   { pos: new THREE.Vector3(3.8, 4.35, 3.8),  target: new THREE.Vector3(0, 4.05, -0.02), centerLock: false, label: 'ROTOR SYSTEM' },
+            flir:    { pos: new THREE.Vector3(2.8, 2.05, 5.2),  target: new THREE.Vector3(0, 1.65, 2.2),  centerLock: false, label: 'FLIGHT DECK & FLIR' },
+            tail:    { pos: new THREE.Vector3(4.8, 2.3, -8.2),  target: new THREE.Vector3(0, 1.75, -4.8), centerLock: false, label: 'PROPULSION TAIL' },
+            gear:    { pos: new THREE.Vector3(3.6, 0.95, 1.8),  target: new THREE.Vector3(0.6, 0.55, 0.8), centerLock: false, label: 'LANDING GEAR' }
         };
 
         let camAnim = null;
@@ -5792,6 +5874,7 @@
                 camButtons.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 statView.textContent = preset.label;
+                lockOrbitToHeliCenter = Boolean(preset.centerLock);
 
                 const offsetPos = preset.pos.clone().add(helicopterRoot.position);
                 const offsetTarget = preset.target.clone().add(helicopterRoot.position);
@@ -6235,8 +6318,9 @@
             heliFlight.targetAlt = 0;
             helicopterRoot.position.set(0, 0, 0);
             helicopterRoot.rotation.set(0, 0, 0);
+            lockOrbitToHeliCenter = true;
             camera.position.add(new THREE.Vector3(dx, dy, dz));
-            controls.target.set(0, 2.2, 0.2);
+            controls.target.copy(HELI_CENTER_OFFSET);
         });
 
         // Mobile Gyroscope Camera Orientation Control (DeviceOrientationEvent)
@@ -6365,6 +6449,9 @@
                 if (hitSys) {
                     selectSubsystem(hitSys);
                 }
+            } else {
+                // Clicking empty space re-locks the camera orbit pivot to the exact center of the helicopter
+                lockOrbitToHeliCenter = true;
             }
         });
 
@@ -6430,33 +6517,41 @@
             const altError = heliFlight.targetAlt - heliFlight.hoverAlt;
 
             // AUTO Rotor Governor: dynamically computes realistic RPM, Collective Pitch & Pusher Fan Boost from flight state
+            // When landed on the helipad/ground with targetAlt == 0, the rotors slowly spool down to a complete stop (0 RPM)
             if (rotorMode === 'auto') {
-                let autoTargetRpm = 0.58; // 58% Ground Idle on Helipad
-                let autoTargetPitch = 1.5;
-                let autoPusherBoost = 0.65;
+                let autoTargetRpm = 0.0;
+                let autoTargetPitch = 0.0;
+                let autoPusherBoost = 0.0;
+                let spoolRate = 2.4;
 
-                if (heliFlight.targetAlt <= 0.08 && heliFlight.hoverAlt <= 0.12 && fwdInput === 0 && sideInput === 0) {
-                    heliFlight.flightPhase = 'GROUND IDLE';
-                    autoTargetRpm = 0.58;
-                    autoTargetPitch = 1.5;
-                    autoPusherBoost = 0.55;
+                if (heliFlight.targetAlt <= 0.06 && heliFlight.hoverAlt <= 0.08 && fwdInput === 0 && sideInput === 0 && vertInput <= 0) {
+                    // Landed on ground: slowly decelerate rotors to a complete stop
+                    heliFlight.flightPhase = currentRotorSpeed > 0.03 ? 'LANDED // SPOOL DOWN' : 'LANDED // STOPPED';
+                    autoTargetRpm = 0.0;
+                    autoTargetPitch = 0.0;
+                    autoPusherBoost = 0.0;
+                    spoolRate = 0.55; // Slow, realistic inertia spool-down after touchdown
                 } else if (altError > 0.45) {
                     heliFlight.flightPhase = heliFlight.hoverAlt < 1.2 ? 'TAKEOFF LIFT' : 'CLIMB';
                     autoTargetRpm = 1.02; // 102% high-power takeoff governor
                     autoTargetPitch = THREE.MathUtils.clamp(9.2 + altError * 1.4, 9.5, 13.5);
                     autoPusherBoost = 1.05;
-                } else if (altError < -0.45) {
+                    spoolRate = 2.2;
+                } else if (altError < -0.25 || (heliFlight.targetAlt <= 0.06 && heliFlight.hoverAlt > 0.08)) {
                     heliFlight.flightPhase = heliFlight.hoverAlt < 2.2 ? 'LANDING FLARE' : 'DESCENT';
-                    autoTargetRpm = 0.98;
-                    // Cushion flare collective pull right before touchdown (hoverAlt < 1.5m)
-                    autoTargetPitch = heliFlight.hoverAlt < 1.5 ? 8.6 : 3.4;
-                    autoPusherBoost = 0.85;
+                    // Gradually reduce rotor RPM as the helicopter settles onto the pad
+                    autoTargetRpm = heliFlight.hoverAlt < 0.8 ? 0.68 : 0.94;
+                    // Cushion flare collective pull right before touchdown (hoverAlt < 1.6m)
+                    autoTargetPitch = heliFlight.hoverAlt < 1.6 ? 7.8 : 3.2;
+                    autoPusherBoost = 0.65;
+                    spoolRate = 1.6;
                 } else if (horizSpeed > 3.2) {
                     heliFlight.flightPhase = 'COMPOUND CRUISE';
                     autoTargetRpm = 1.00;
                     autoTargetPitch = THREE.MathUtils.clamp(8.2 + (horizSpeed / 18.0) * 3.6, 8.2, 12.2);
                     // Sikorsky Raider-X style compound pusher thruster overdrive in high-speed cruise
                     autoPusherBoost = 1.0 + (horizSpeed / 18.0) * 0.65;
+                    spoolRate = 2.4;
                 } else {
                     // In-Ground-Effect (IGE) requires slightly less collective than Out-of-Ground-Effect (OGE)
                     const isIGE = heliFlight.hoverAlt < 4.5;
@@ -6464,11 +6559,13 @@
                     autoTargetRpm = 1.00;
                     autoTargetPitch = isIGE ? 7.6 : 8.9;
                     autoPusherBoost = 1.0;
+                    spoolRate = 2.2;
                 }
 
-                maxRotorThrottle += (autoTargetRpm - maxRotorThrottle) * Math.min(dt * 2.4, 1.0);
-                const newPitch = collectivePitchDeg + (autoTargetPitch - collectivePitchDeg) * Math.min(dt * 4.2, 1.0);
-                heliFlight.tailPusherBoost += (autoPusherBoost - heliFlight.tailPusherBoost) * Math.min(dt * 3.5, 1.0);
+                maxRotorThrottle += (autoTargetRpm - maxRotorThrottle) * Math.min(dt * spoolRate, 1.0);
+                if (autoTargetRpm === 0.0 && maxRotorThrottle < 0.008) maxRotorThrottle = 0.0;
+                const newPitch = collectivePitchDeg + (autoTargetPitch - collectivePitchDeg) * Math.min(dt * 3.8, 1.0);
+                heliFlight.tailPusherBoost += (autoPusherBoost - heliFlight.tailPusherBoost) * Math.min(dt * 3.0, 1.0);
 
                 // Sync UI sliders & labels in real time
                 const rpmPct = Math.round(maxRotorThrottle * 100);
@@ -6484,9 +6581,11 @@
                 heliFlight.tailPusherBoost = 0.0;
             }
 
-            // Spool rotor angular velocity toward target
+            // Spool rotor angular velocity toward target (with realistic slow coast-down when decelerating on the ground)
             const targetSpeed = rotorActive ? maxRotorThrottle : 0.0;
-            currentRotorSpeed += (targetSpeed - currentRotorSpeed) * Math.min(dt * 2.2, 1.0);
+            const accelRate = (targetSpeed < currentRotorSpeed && heliFlight.hoverAlt < 0.15) ? 0.52 : 2.2;
+            currentRotorSpeed += (targetSpeed - currentRotorSpeed) * Math.min(dt * accelRate, 1.0);
+            if (targetSpeed === 0.0 && currentRotorSpeed < 0.004) currentRotorSpeed = 0.0;
 
             // Blade Coning Angle (Blades flex upward under aerodynamic lift load)
             const liftLoad = currentRotorSpeed * Math.max(0.0, (collectivePitchDeg + 2.0) / 14.0);
@@ -6513,24 +6612,25 @@
                 const angularStep = currentRotorSpeed * dt * 24.0;
                 lowerRotorSpinGroup.rotation.y += angularStep;
                 upperRotorSpinGroup.rotation.y -= angularStep;
-                tailFanSpinGroup.rotation.x += angularStep * 2.6 * heliFlight.tailPusherBoost;
+                tailFanSpinGroup.rotation.x += angularStep * 2.6 * Math.max(0.25, heliFlight.tailPusherBoost);
                 const rpmVal = Math.round(currentRotorSpeed * 320);
                 statRpm.textContent = `${rotorMode.toUpperCase()} // ${rpmVal} RPM (${heliFlight.flightPhase})`;
             } else {
-                statRpm.textContent = 'OFF // 0 RPM (STATIC)';
+                statRpm.textContent = `${rotorMode.toUpperCase()} // 0 RPM (STOPPED)`;
             }
 
             // Realistic Vertical Climb / Sink Rate with Ground Effect (IGE) Cushioning
-            const canLiftOff = currentRotorSpeed > 0.78 && collectivePitchDeg > 4.5;
-            const effectiveTargetAlt = canLiftOff ? heliFlight.targetAlt : 0.0;
-            const hoverBob = (heliFlight.hoverAlt > 0.2 && currentRotorSpeed > 0.7)
+            // Allow smooth takeoff spool-up and controlled descent all the way to touchdown
+            const liftAuthority = THREE.MathUtils.smoothstep(currentRotorSpeed, 0.35, 0.82);
+            const effectiveTargetAlt = heliFlight.targetAlt * liftAuthority;
+            const hoverBob = (heliFlight.hoverAlt > 0.25 && currentRotorSpeed > 0.7)
                 ? Math.sin(elapsed * 2.1) * 0.045 + Math.cos(elapsed * 3.4) * 0.02
                 : 0.0;
             const desiredAlt = Math.max(0.0, effectiveTargetAlt + hoverBob);
             const vertAccel = (desiredAlt - heliFlight.hoverAlt) * 4.2 - heliFlight.vy * 2.8;
             heliFlight.vy += vertAccel * dt;
             heliFlight.hoverAlt = Math.max(0.0, heliFlight.hoverAlt + heliFlight.vy * dt);
-            if (heliFlight.hoverAlt <= 0.001 && desiredAlt <= 0.01) {
+            if (heliFlight.hoverAlt <= 0.01 && heliFlight.targetAlt <= 0.05) {
                 heliFlight.hoverAlt = 0.0;
                 heliFlight.vy = 0.0;
             }
@@ -6622,11 +6722,15 @@
             helicopterRoot.rotation.order = 'YXZ';
             helicopterRoot.rotation.set(heliFlight.pitch, heliFlight.yaw, heliFlight.roll);
 
-            // Keep Camera & OrbitControls Target tracking the helicopter's translation
+            // Keep Camera & OrbitControls Target tracking the helicopter's translation and centered on the helicopter's middle
             const deltaMove = new THREE.Vector3(heliFlight.x - prevX, heliFlight.y - prevY, heliFlight.z - prevZ);
             if (deltaMove.lengthSq() > 0.000001) {
                 camera.position.add(deltaMove);
                 controls.target.add(deltaMove);
+            }
+            if (lockOrbitToHeliCenter && !camAnim) {
+                const desiredCenter = helicopterRoot.position.clone().add(HELI_CENTER_OFFSET);
+                controls.target.lerp(desiredCenter, Math.min(dt * 8.0, 1.0));
             }
 
             // 3B. Live-Fire 20mm Autocannon, Guided Missiles, Explosions & Immersive Screen Shake
